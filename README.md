@@ -1,1 +1,1 @@
-Connect to the Rithmic API using Rust. Use at your own risk.
+Connect to the Rithmic R | Protocal API using Rust. As is, use at your own risk.
