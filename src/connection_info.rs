@@ -75,3 +75,14 @@ pub struct AccountInfo {
     pub fcm_id: String,
     pub ib_id: String,
 }
+
+impl Default for AccountInfo {
+    fn default() -> Self {
+        AccountInfo {
+            account_id: "".to_string(),
+            env: RithmicConnectionSystem::Live,
+            fcm_id: "".to_string(),
+            ib_id: "".to_string(),
+        }
+    }
+}

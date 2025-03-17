@@ -1,15 +1,27 @@
 use async_trait::async_trait;
 use std::time::Duration;
 use tracing::{error, info, warn};
+use std::env;
+use anyhow::anyhow;
 
 use tokio::{
     net::TcpStream,
     time::{Instant, Interval, interval_at, sleep, timeout},
 };
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
+use bytes::Bytes;
+use http::{Request, Uri};
+use http::header::PROXY_AUTHORIZATION;
+
+
 
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async_with_config,
-    tungstenite::{Error, Message},
+    tungstenite::{
+        Error, Message,
+        client::IntoClientRequest,
+    },
 };
 
 /// Number of seconds between heartbeats sent to the server.
@@ -98,4 +110,51 @@ pub async fn connect_with_retry(
         std::io::ErrorKind::Other,
         "max connection attempts reached",
     )))
+}
+
+pub async fn connect(url: &str) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, anyhow::Error> {
+    let ws_uri: Uri = url.parse()?;
+
+    if let Ok(proxy_url_str) = env::var("HTTPS_PROXY") {
+        let proxy_uri: hyper::Uri = proxy_url_str.parse()?;
+
+        // Établir une connexion TCP avec le proxy
+        let stream = hyper_util::rt::TokioIo::new(TcpStream::connect(format!("{}:{}", proxy_uri.host().unwrap_or_default(), proxy_uri.port_u16().unwrap_or(80))).await?);
+
+        let (mut request_sender, conn) = hyper::client::conn::http1::handshake(stream).await?;
+        let conn = tokio::spawn(conn.without_shutdown());
+
+        let mut request_builder = Request::connect(format!("{}:{}", ws_uri.host().unwrap_or_default(), ws_uri.port_u16().unwrap_or(443)));
+        // Ajoute l'authentification si présente dans l'URL du proxy
+        if let Some(auth) = proxy_uri.authority() {
+            if let Some((username, password)) = auth.as_str().split_once('@') {
+                let credentials = format!("{}:{}", username, password.splitn(2, ':').next().unwrap_or(""));
+                let auth = format!("Basic {}", BASE64_STANDARD.encode(credentials));
+                request_builder = request_builder.header(PROXY_AUTHORIZATION, auth);
+            }
+        }
+        let request = request_builder.body(http_body_util::Empty::<Bytes>::new())?;
+
+        let res = request_sender.send_request(request).await?;
+
+        if !res.status().is_success() {
+            return Err(anyhow!(
+                "The proxy server returned an error response: status code: {}, body: {:#?}",
+                res.status(),
+                res.body()
+            ));
+        }
+
+        let tcp = conn.await
+            .map_err(|e| anyhow!(e))??
+            .io
+            .into_inner();
+
+        // CryptoProvider::install_default();
+        let ws_stream = tokio_tungstenite::client_async_tls(ws_uri.into_client_request()?, tcp).await?.0;
+        Ok(ws_stream)
+    } else {
+        let ws_stream = tokio_tungstenite::connect_async(ws_uri.into_client_request()?).await?.0;
+        Ok(ws_stream)
+    }
 }

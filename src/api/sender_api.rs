@@ -3,20 +3,11 @@ use prost::Message;
 use crate::{
     connection_info::{AccountInfo, RithmicConnectionSystem},
     rti::{
-        RequestAccountList, RequestBracketOrder, RequestCancelOrder, RequestDepthByOrderSnapshot,
-        RequestDepthByOrderUpdates, RequestExitPosition, RequestHeartbeat, RequestLogin,
-        RequestLogout, RequestMarketDataUpdate, RequestModifyOrder, RequestNewOrder,
-        RequestPnLPositionSnapshot, RequestPnLPositionUpdates, RequestRithmicSystemInfo,
-        RequestShowBracketStops, RequestShowBrackets, RequestShowOrders,
-        RequestSubscribeForOrderUpdates, RequestSubscribeToBracketUpdates, RequestTickBarReplay,
-        RequestTimeBarReplay, RequestUpdateStopBracketLevel, RequestUpdateTargetBracketLevel,
+        *,
         request_account_list::UserType,
-        request_bracket_order, request_depth_by_order_updates,
         request_login::SysInfraType,
         request_market_data_update::{Request, UpdateBits},
-        request_new_order, request_pn_l_position_updates,
         request_tick_bar_replay::{BarSubType, BarType, Direction, TimeOrder},
-        request_time_bar_replay,
     },
 };
 
@@ -69,6 +60,18 @@ impl RithmicSenderApi {
         let req = RequestRithmicSystemInfo {
             template_id: 16,
             user_msg: vec![id.clone()],
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_rithmic_system_gateway_info(&mut self, system_name: String) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestRithmicSystemGatewayInfo {
+            template_id: 20,
+            user_msg: vec![id.clone()],
+            system_name: Some(system_name),
         };
 
         self.request_to_buf(req, id)
