@@ -8,6 +8,8 @@ use crate::{
         request_login::SysInfraType,
         request_market_data_update::{Request, UpdateBits},
         request_tick_bar_replay::{BarSubType, BarType, Direction, TimeOrder},
+        request_search_symbols::InstrumentType,
+        request_search_symbols::Pattern,
     },
 };
 
@@ -150,6 +152,63 @@ impl RithmicSenderApi {
         req.exchange = Some(exchange.into());
         req.request = Some(request_type.into());
         req.update_bits = Some(bits);
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_product_codes(&mut self, exchange: Option<String>) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestProductCodes {
+            template_id: 111,
+            user_msg: vec![id.clone()],
+            exchange,
+            give_toi_products_only: Some(true),
+        };
+
+        self.request_to_buf(req, id)
+    }
+    pub fn request_reference_data(&mut self, symbol: Option<String>, exchange: Option<String>) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestReferenceData {
+            template_id: 14,
+            user_msg: vec![id.clone()],
+            symbol,
+            exchange,
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_search_symbols(&mut self,
+                                  search_text: Option<String>,
+                                  instrument_type: Option<InstrumentType>,
+                                  exact_search: Option<bool>
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestSearchSymbols {
+            template_id: 109,
+            user_msg: vec![id.clone()],
+            search_text,
+            instrument_type: if instrument_type.is_some() {Some(instrument_type.unwrap() as i32)} else {None},
+            pattern: Some(if exact_search.is_some_and(|b| { b }) {
+                Pattern::Equals as i32
+            } else { Pattern::Contains as i32 }),
+            ..RequestSearchSymbols::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_get_instrument_by_underlying(&mut self) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestGetInstrumentByUnderlying {
+            template_id: 102,
+            ..RequestGetInstrumentByUnderlying::default()
+        };
 
         self.request_to_buf(req, id)
     }

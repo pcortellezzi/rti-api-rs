@@ -1,26 +1,27 @@
 use anyhow::anyhow;
 use tracing::{event, Level};
 
-use crate::{api::{
-    receiver_api::{RithmicReceiverApi, RithmicResponse},
-    sender_api::RithmicSenderApi,
-}, connection_info, connection_info::RithmicConnectionInfo, request_handler::{RithmicRequest, RithmicRequestHandler}, ws::{get_heartbeat_interval, PlantActor, RithmicStream, connect}};
+use crate::{
+    api::{
+        receiver_api::RithmicReceiverApi,
+        sender_api::RithmicSenderApi,
+    },
+    connection_info,
+};
 
 use futures_util::{
-    stream::{SplitSink, SplitStream},
+    stream::SplitSink,
     SinkExt, StreamExt,
 };
 
 use tokio_tungstenite::{
-    tungstenite::{Error, Message},
+    tungstenite::Message,
     MaybeTlsStream,
     WebSocketStream,
 };
 
 use tokio::{
     net::TcpStream,
-    sync::{broadcast::Sender, oneshot},
-    time::Interval,
 };
 
 use crate::{

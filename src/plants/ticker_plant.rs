@@ -13,6 +13,7 @@ use crate::{
         request_depth_by_order_updates,
         request_login::SysInfraType,
         request_market_data_update::{Request, UpdateBits},
+        request_search_symbols::InstrumentType,
     },
     ws::{HEARTBEAT_SECS, PlantActor, RithmicStream, connect_with_retry, get_heartbeat_interval},
 };
@@ -38,11 +39,29 @@ pub enum TickerPlantCommand {
     ListSystemInfo {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
+    GetInstrumentByUnderlying {
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
     Login {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
     SetLogin,
     Logout {
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
+    ProductCodes {
+        exchange: Option<String>,
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
+    SearchSymbols {
+        search_text: Option<String>,
+        instrument_type: Option<InstrumentType>,
+        exact_search: Option<bool>,
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
+    ReferenceData {
+        symbol: Option<String>,
+        exchange: Option<String>,
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
     SendHeartbeat {},
@@ -321,6 +340,19 @@ impl PlantActor for TickerPlant {
                     .await
                     .unwrap();
             }
+            TickerPlantCommand::GetInstrumentByUnderlying { response_sender} => {
+                let (request_buf, id) = self.rithmic_sender_api.request_get_instrument_by_underlying();
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                let _ = self.rithmic_sender
+                    .send(Message::Binary(request_buf.into()))
+                    .await
+                    .unwrap();
+            }
             TickerPlantCommand::Login { response_sender } => {
                 let (login_buf, id) = self.rithmic_sender_api.request_login(
                     &self.config.system_name,
@@ -354,6 +386,51 @@ impl PlantActor for TickerPlant {
 
                 self.rithmic_sender
                     .send(Message::Binary(logout_buf.into()))
+                    .await
+                    .unwrap();
+            }
+            TickerPlantCommand::ProductCodes { exchange , response_sender} => {
+                let (request_buf, id) = self.rithmic_sender_api.request_product_codes(exchange);
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                let _ = self.rithmic_sender
+                    .send(Message::Binary(request_buf.into()))
+                    .await
+                    .unwrap();
+            }
+            TickerPlantCommand::ReferenceData { symbol, exchange , response_sender} => {
+                let (request_buf, id) = self.rithmic_sender_api.request_reference_data(
+                    symbol, exchange
+                );
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                let _ = self.rithmic_sender
+                    .send(Message::Binary(request_buf.into()))
+                    .await
+                    .unwrap();
+            }
+            TickerPlantCommand::SearchSymbols { search_text , instrument_type, exact_search, response_sender} => {
+                let (request_buf, id) = self.rithmic_sender_api.request_search_symbols(
+                    search_text,
+                    instrument_type,
+                    exact_search
+                );
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                let _ = self.rithmic_sender
+                    .send(Message::Binary(request_buf.into()))
                     .await
                     .unwrap();
             }
@@ -524,6 +601,69 @@ impl RithmicTickerPlantHandle {
         self.subscription_sender.send(response.clone()).unwrap();
 
         Ok(response)
+    }
+
+    pub async fn get_instrument_by_underlying(&mut self) -> Result<Vec<RithmicResponse>, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = TickerPlantCommand::GetInstrumentByUnderlying {
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap()?)
+    }
+
+    pub async fn product_codes(&mut self,
+                                exchange: Option<String>
+    ) -> Result<Vec<RithmicResponse>, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = TickerPlantCommand::ProductCodes {
+            exchange,
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap()?)
+    }
+
+    pub async fn reference_data(&mut self,
+                                symbol: Option<String>,
+                                exchange: Option<String>
+    ) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = TickerPlantCommand::ReferenceData {
+            symbol,
+            exchange,
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap()?.remove(0))
+    }
+
+    pub async fn search_symbols(&mut self,
+                                search_text: Option<String>,
+                                instrument_type: Option<InstrumentType>,
+                                exact_search: Option<bool>
+    ) -> Result<Vec<RithmicResponse>, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = TickerPlantCommand::SearchSymbols {
+            search_text,
+            instrument_type,
+            exact_search,
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap()?)
     }
 
     /// Subscribe to market data for a specific symbol
