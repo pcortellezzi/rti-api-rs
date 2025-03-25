@@ -15,6 +15,7 @@ use crate::{
     request_handler::{RithmicRequest, RithmicRequestHandler},
     rti::{
         messages::RithmicMessage, request_login::SysInfraType, request_time_bar_replay::BarType,
+        request_time_bar_update, request_tick_bar_update,
     },
     ws::{HEARTBEAT_SECS, PlantActor, RithmicStream, connect_with_retry, get_heartbeat_interval},
 };
@@ -62,6 +63,23 @@ pub enum HistoryPlantCommand {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
         start_time_sec: i32,
         symbol: String,
+    },
+    SubUnsubTickBar {
+        symbol: String,
+        exchange: String,
+        bar_type: request_tick_bar_update::BarType,
+        bar_sub_type: request_tick_bar_update::BarSubType,
+        bar_type_specifier: String,
+        request_type: request_tick_bar_update::Request,
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
+    SubUnsubTimeBar {
+        symbol: String,
+        exchange: String,
+        bar_type: request_time_bar_update::BarType,
+        bar_type_period: i32,
+        request_type: request_time_bar_update::Request,
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
 }
 
@@ -423,6 +441,60 @@ impl PlantActor for HistoryPlant {
                     .await
                     .unwrap();
             }
+            HistoryPlantCommand::SubUnsubTickBar {
+                symbol,
+                exchange,
+                bar_type,
+                bar_sub_type,
+                bar_type_specifier,
+                request_type,
+                response_sender,
+            } => {
+                let (sub_buf, id) = self.rithmic_sender_api.request_tick_bar_update(
+                    &symbol,
+                    &exchange,
+                    bar_type,
+                    bar_sub_type,
+                    &bar_type_specifier,
+                    request_type,
+                );
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                self.rithmic_sender
+                    .send(Message::Binary(sub_buf.into()))
+                    .await
+                    .unwrap();
+            }
+            HistoryPlantCommand::SubUnsubTimeBar {
+                symbol,
+                exchange,
+                bar_type,
+                bar_type_period,
+                request_type,
+                response_sender,
+            } => {
+                let (sub_buf, id) = self.rithmic_sender_api.request_time_bar_update(
+                    &symbol,
+                    &exchange,
+                    bar_type,
+                    bar_type_period,
+                    request_type,
+                );
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                self.rithmic_sender
+                    .send(Message::Binary(sub_buf.into()))
+                    .await
+                    .unwrap();
+            }
         }
     }
 }
@@ -589,6 +661,56 @@ impl RithmicHistoryPlantHandle {
         let _ = self.sender.send(command).await;
 
         Ok(rx.await.unwrap().unwrap())
+    }
+
+    pub async fn sub_unsub_tick_bar(
+        &self,
+        symbol: &str,
+        exchange: &str,
+        bar_type: request_tick_bar_update::BarType,
+        bar_sub_type: request_tick_bar_update::BarSubType,
+        bar_type_specifier: &str,
+        request_type: request_tick_bar_update::Request
+    ) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = HistoryPlantCommand::SubUnsubTickBar {
+            symbol: symbol.to_string(),
+            exchange: exchange.to_string(),
+            bar_type,
+            bar_sub_type,
+            bar_type_specifier: bar_type_specifier.to_string(),
+            request_type,
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap()?.remove(0))
+    }
+
+    pub async fn sub_unsub_time_bar(
+        &self,
+        symbol: &str,
+        exchange: &str,
+        bar_type: request_time_bar_update::BarType,
+        bar_type_period: i32,
+        request_type: request_time_bar_update::Request
+    ) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = HistoryPlantCommand::SubUnsubTimeBar {
+            symbol: symbol.to_string(),
+            exchange: exchange.to_string(),
+            bar_type,
+            bar_type_period,
+            request_type,
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap()?.remove(0))
     }
 }
 

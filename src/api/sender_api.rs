@@ -535,6 +535,32 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    pub fn request_tick_bar_update(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+        bar_type: request_tick_bar_update::BarType,
+        bar_sub_type: request_tick_bar_update::BarSubType,
+        bar_type_specifier: &str,
+        request_type: request_tick_bar_update::Request,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestTickBarUpdate {
+            template_id: 204,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            bar_type: Some(bar_type.into()),
+            bar_sub_type: Some(bar_sub_type.into()),
+            bar_type_specifier: Some(bar_type_specifier.into()),
+            request: Some(request_type.into()),
+            ..RequestTickBarUpdate::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
     /// Request a replay of tick bar data
     ///
     /// # Arguments
@@ -569,6 +595,30 @@ impl RithmicSenderApi {
             time_order: Some(TimeOrder::Forwards.into()),
             user_msg: vec![id.clone()],
             ..Default::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_time_bar_update(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+        bar_type: request_time_bar_update::BarType,
+        bar_type_period: i32,
+        request_type: request_time_bar_update::Request,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestTimeBarUpdate {
+            template_id: 200,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            bar_type: Some(bar_type.into()),
+            bar_type_period: Some(bar_type_period),
+            request: Some(request_type.into()),
+            ..RequestTimeBarUpdate::default()
         };
 
         self.request_to_buf(req, id)
