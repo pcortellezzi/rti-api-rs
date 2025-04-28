@@ -1,13 +1,13 @@
 [package]
-name = "rithmic-client"
+name = "rithmic-rs"
 version = "0.3.1"
-description = "Rust client for the Rithmic R | Protocol API for trading applications"
+description = "Rust client for the Rithmic R | Protocol API to build algo trading systems"
 license = "MIT OR Apache-2.0"
 edition = "2024"
 repository = "https://github.com/pbeets/rithmic-rs"
 documentation = "https://docs.rs/rithmic-client"
 readme = "README.md"
-keywords = ["trading", "rithmic", "algotrading", "algorithmic trading"]
+keywords = ["trading", "rithmic", "algotrading", "algorithmic-trading"]
 categories = ["api-bindings", "finance"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
