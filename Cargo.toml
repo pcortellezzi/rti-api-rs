@@ -1,7 +1,14 @@
 [package]
 name = "rithmic-client"
-version = "0.1.0"
-edition = "2021"
+version = "0.3.0"
+description = "Rust client for the Rithmic R | Protocol API for trading applications"
+license = "MIT OR Apache-2.0"
+edition = "2024"
+repository = "https://github.com/pbeets/rithmic-rs"
+documentation = "https://docs.rs/rithmic-client"
+readme = "README.md"
+keywords = ["trading", "rithmic", "algotrading", "algorithmic trading"]
+categories = ["api-bindings", "finance"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,11 +17,11 @@ async-trait = "0.1.73"
 dotenv = "0.15.0"
 futures-util = "0.3.28"
 prost = "0.12.3"
-tokio = { version = "1.39.2", features = ["full"] }
+tokio = { version = "1.42.0", features = ["full"] }
 tokio-tungstenite = { version = "0.23.1", features = ["native-tls"] }
-tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
 url = "2.4.1"
 
 [build-dependencies]
-prost-build = "0.12.1"
+prost-build = "0.13.5"
