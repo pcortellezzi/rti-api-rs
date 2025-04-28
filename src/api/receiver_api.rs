@@ -34,7 +34,7 @@ pub struct RithmicReceiverApi {
 }
 
 impl RithmicReceiverApi {
-    pub fn buf_to_message(&self, data: Vec<u8>) -> Result<RithmicResponse, String> {
+    pub fn buf_to_message(&self, data: Vec<u8>) -> Result<RithmicResponse, RithmicResponse> {
         let parsed_message = MessageType::decode(&mut Cursor::new(&data[4..]));
 
         let response = match parsed_message.clone().unwrap().template_id {
@@ -657,7 +657,7 @@ impl RithmicReceiverApi {
                 error
             );
 
-            return Err(error);
+            return Err(response);
         }
 
         Ok(response)

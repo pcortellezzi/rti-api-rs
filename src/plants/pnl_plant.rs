@@ -1,32 +1,31 @@
 use async_trait::async_trait;
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 use crate::{
     api::{
         receiver_api::{RithmicReceiverApi, RithmicResponse},
         sender_api::RithmicSenderApi,
     },
-    connection_info::{self, AccountInfo, RithmicConnectionSystem},
+    connection_info::{self, AccountInfo},
     request_handler::{RithmicRequest, RithmicRequestHandler},
     rti::{request_login::SysInfraType, request_pn_l_position_updates},
-    ws::{get_heartbeat_interval, PlantActor, RithmicStream},
+    ws::{PlantActor, RithmicStream, get_heartbeat_interval},
 };
 
 use futures_util::{
-    stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
+    stream::{SplitSink, SplitStream},
 };
 
 use tokio::{
     net::TcpStream,
-    sync::{broadcast::Sender, oneshot},
+    sync::{broadcast, mpsc, oneshot},
     time::Interval,
 };
 
 use tokio_tungstenite::{
-    connect_async,
+    MaybeTlsStream, connect_async,
     tungstenite::{Error, Message},
-    MaybeTlsStream,
 };
 
 pub enum PnlPlantCommand {
@@ -49,16 +48,16 @@ pub enum PnlPlantCommand {
 
 pub struct RithmicPnlPlant {
     pub connection_handle: tokio::task::JoinHandle<()>,
-    sender: tokio::sync::mpsc::Sender<PnlPlantCommand>,
-    subscription_sender: tokio::sync::broadcast::Sender<RithmicResponse>,
+    sender: mpsc::Sender<PnlPlantCommand>,
+    subscription_sender: broadcast::Sender<RithmicResponse>,
 }
 
 impl RithmicPnlPlant {
-    pub async fn new(env: &RithmicConnectionSystem, account_info: &AccountInfo) -> RithmicPnlPlant {
-        let (req_tx, req_rx) = tokio::sync::mpsc::channel::<PnlPlantCommand>(32);
-        let (sub_tx, _sub_rx) = tokio::sync::broadcast::channel(1024);
+    pub async fn new(account_info: &AccountInfo) -> RithmicPnlPlant {
+        let (req_tx, req_rx) = mpsc::channel::<PnlPlantCommand>(32);
+        let (sub_tx, _sub_rx) = broadcast::channel(1024);
 
-        let mut pnl_plant = PnlPlant::new(req_rx, sub_tx.clone(), account_info, env)
+        let mut pnl_plant = PnlPlant::new(req_rx, sub_tx.clone(), account_info)
             .await
             .unwrap();
 
@@ -91,7 +90,7 @@ pub struct PnlPlant {
     interval: Interval,
     logged_in: bool,
     request_handler: RithmicRequestHandler,
-    request_receiver: tokio::sync::mpsc::Receiver<PnlPlantCommand>,
+    request_receiver: mpsc::Receiver<PnlPlantCommand>,
     rithmic_reader: SplitStream<tokio_tungstenite::WebSocketStream<MaybeTlsStream<TcpStream>>>,
     rithmic_receiver_api: RithmicReceiverApi,
     rithmic_sender: SplitSink<
@@ -99,17 +98,16 @@ pub struct PnlPlant {
         tokio_tungstenite::tungstenite::Message,
     >,
     rithmic_sender_api: RithmicSenderApi,
-    subscription_sender: Sender<RithmicResponse>,
+    subscription_sender: broadcast::Sender<RithmicResponse>,
 }
 
 impl PnlPlant {
     async fn new(
-        request_receiver: tokio::sync::mpsc::Receiver<PnlPlantCommand>,
-        subscription_sender: Sender<RithmicResponse>,
+        request_receiver: mpsc::Receiver<PnlPlantCommand>,
+        subscription_sender: broadcast::Sender<RithmicResponse>,
         account_info: &AccountInfo,
-        env: &RithmicConnectionSystem,
     ) -> Result<PnlPlant, ()> {
-        let config = connection_info::get_config(env);
+        let config = connection_info::get_config(&account_info.env);
 
         let (ws_stream, _) = connect_async(&config.url).await.expect("Failed to connect");
         let (rithmic_sender, rithmic_reader) = ws_stream.split();
@@ -178,7 +176,7 @@ impl PlantActor for PnlPlant {
                         match self.subscription_sender.send(response) {
                             Ok(_) => {}
                             Err(e) => {
-                                event!(Level::ERROR, "failed to send response {:?}", e);
+                                event!(Level::ERROR, "pnl_plant: failed to send response {:?}", e);
                             }
                         };
                     } else {
@@ -186,15 +184,21 @@ impl PlantActor for PnlPlant {
                     }
                 }
                 Err(err) => {
-                    event!(Level::ERROR, "received an error message {:?}", err);
+                    event!(
+                        Level::ERROR,
+                        "pnl_plant: received an error message {:?}",
+                        err
+                    );
+
+                    self.request_handler.handle_response(err);
                 }
             },
             Err(Error::ConnectionClosed) => {
-                event!(Level::INFO, "Connection closed");
+                event!(Level::INFO, "pnl_plant: Connection closed");
                 stop = true;
             }
             _ => {
-                event!(Level::WARN, "Unhandled message: {:?}", message);
+                event!(Level::WARN, "pnl_plant: Unhandled message: {:?}", message);
             }
         }
 
@@ -286,8 +290,8 @@ impl PlantActor for PnlPlant {
 }
 
 pub struct RithmicPnlPlantHandle {
-    sender: tokio::sync::mpsc::Sender<PnlPlantCommand>,
-    pub subscription_receiver: tokio::sync::broadcast::Receiver<RithmicResponse>,
+    sender: mpsc::Sender<PnlPlantCommand>,
+    pub subscription_receiver: broadcast::Receiver<RithmicResponse>,
 }
 
 impl RithmicPnlPlantHandle {
@@ -351,6 +355,16 @@ impl RithmicPnlPlantHandle {
 
         let _ = self.sender.send(command).await;
 
-        Ok(rx.await.unwrap().unwrap().remove(0))
+        let response = rx.await;
+
+        if let Ok(r) = response {
+            if let Ok(mut v) = r {
+                Ok(v.remove(0))
+            } else {
+                Err("error".to_string())
+            }
+        } else {
+            Err("error".to_string())
+        }
     }
 }

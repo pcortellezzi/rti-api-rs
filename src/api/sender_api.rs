@@ -3,16 +3,18 @@ use prost::Message;
 use crate::{
     connection_info::{AccountInfo, RithmicConnectionSystem},
     rti::{
+        request_account_list::UserType,
         request_bracket_order,
         request_login::SysInfraType,
         request_market_data_update::{Request, UpdateBits},
-        request_new_order, request_pn_l_position_updates, RequestBracketOrder, RequestCancelOrder,
-        RequestExitPosition, RequestHeartbeat, RequestLogin, RequestLogout,
-        RequestMarketDataUpdate, RequestModifyOrder, RequestNewOrder, RequestPnLPositionSnapshot,
-        RequestPnLPositionUpdates, RequestRithmicSystemInfo, RequestShowBracketStops,
-        RequestShowBrackets, RequestShowOrders, RequestSubscribeForOrderUpdates,
-        RequestSubscribeToBracketUpdates, RequestUpdateStopBracketLevel,
-        RequestUpdateTargetBracketLevel,
+        request_new_order, request_pn_l_position_updates,
+        request_tick_bar_replay::{BarSubType, BarType, Direction, TimeOrder},
+        RequestAccountList, RequestBracketOrder, RequestCancelOrder, RequestExitPosition,
+        RequestHeartbeat, RequestLogin, RequestLogout, RequestMarketDataUpdate, RequestModifyOrder,
+        RequestNewOrder, RequestPnLPositionSnapshot, RequestPnLPositionUpdates,
+        RequestRithmicSystemInfo, RequestShowBracketStops, RequestShowBrackets, RequestShowOrders,
+        RequestSubscribeForOrderUpdates, RequestSubscribeToBracketUpdates, RequestTickBarReplay,
+        RequestUpdateStopBracketLevel, RequestUpdateTargetBracketLevel,
     },
 };
 
@@ -147,6 +149,20 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    pub fn request_account_list(&mut self) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestAccountList {
+            template_id: 302,
+            fcm_id: Some(self.fcm_id.clone()),
+            ib_id: Some(self.ib_id.clone()),
+            user_type: Some(UserType::Trader.into()),
+            user_msg: vec![id.clone()],
+        };
+
+        self.request_to_buf(req, id)
+    }
+
     pub fn request_subscribe_for_order_updates(&mut self) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -253,7 +269,7 @@ impl RithmicSenderApi {
             stop_quantity: Some(bracket_order.qty),
             target_ticks: Some(bracket_order.profit_ticks),
             stop_ticks: Some(bracket_order.stop_ticks),
-            price: if bracket_order.ordertype != request_bracket_order::PriceType::Market.into() {
+            price: if bracket_order.ordertype != request_bracket_order::PriceType::Market as i32 {
                 bracket_order.price
             } else {
                 None
@@ -446,6 +462,45 @@ impl RithmicSenderApi {
             ib_id: Some(self.ib_id.clone()),
             account_id: Some(self.account_id.clone()),
             user_msg: vec![id.clone()],
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    /// Request a replay of tick bar data
+    ///
+    /// # Arguments
+    ///
+    /// * `exchange` - The exchange of the symbol
+    /// * `symbol` - The symbol to request data for
+    /// * `start_index_sec` - unix seconds
+    /// * `finish_index_sec` - unix seconds
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the request buffer and the message id
+    pub fn request_tick_bar_replay(
+        &mut self,
+        exchange: String,
+        symbol: String,
+        start_index_sec: i32,
+        finish_index_sec: i32,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestTickBarReplay {
+            template_id: 206,
+            exchange: Some(exchange),
+            symbol: Some(symbol),
+            bar_type: Some(BarType::TickBar.into()),
+            bar_sub_type: Some(BarSubType::Regular.into()),
+            bar_type_specifier: Some("1".to_string()),
+            start_index: Some(start_index_sec),
+            finish_index: Some(finish_index_sec),
+            direction: Some(Direction::First.into()),
+            time_order: Some(TimeOrder::Forwards.into()),
+            user_msg: vec![id.clone()],
+            ..Default::default()
         };
 
         self.request_to_buf(req, id)

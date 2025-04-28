@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 use crate::{
     api::{
@@ -7,26 +7,25 @@ use crate::{
         rithmic_command_types::{RithmicBracketOrder, RithmicCancelOrder, RithmicModifyOrder},
         sender_api::RithmicSenderApi,
     },
-    connection_info::{self, AccountInfo, RithmicConnectionSystem},
+    connection_info::{self, AccountInfo},
     request_handler::{RithmicRequest, RithmicRequestHandler},
     rti::request_login::SysInfraType,
-    ws::{get_heartbeat_interval, PlantActor, RithmicStream},
+    ws::{PlantActor, RithmicStream, get_heartbeat_interval},
 };
 
 use futures_util::{
-    stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
+    stream::{SplitSink, SplitStream},
 };
 
 use tokio_tungstenite::{
-    connect_async,
+    MaybeTlsStream, connect_async,
     tungstenite::{Error, Message},
-    MaybeTlsStream,
 };
 
 use tokio::{
     net::TcpStream,
-    sync::{broadcast::Sender, oneshot},
+    sync::{broadcast, mpsc, oneshot},
     time::Interval,
 };
 
@@ -40,6 +39,9 @@ pub enum OrderPlantCommand {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
     SendHeartbeat {},
+    AccountList {
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
     SubscribeOrderUpdates {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
@@ -78,19 +80,16 @@ pub enum OrderPlantCommand {
 
 pub struct RithmicOrderPlant {
     pub connection_handle: tokio::task::JoinHandle<()>,
-    sender: tokio::sync::mpsc::Sender<OrderPlantCommand>,
-    subscription_sender: tokio::sync::broadcast::Sender<RithmicResponse>,
+    sender: mpsc::Sender<OrderPlantCommand>,
+    subscription_sender: broadcast::Sender<RithmicResponse>,
 }
 
 impl RithmicOrderPlant {
-    pub async fn new(
-        env: &RithmicConnectionSystem,
-        account_info: &AccountInfo,
-    ) -> RithmicOrderPlant {
-        let (req_tx, req_rx) = tokio::sync::mpsc::channel::<OrderPlantCommand>(32);
-        let (sub_tx, _sub_rx) = tokio::sync::broadcast::channel(1024);
+    pub async fn new(account_info: &AccountInfo) -> RithmicOrderPlant {
+        let (req_tx, req_rx) = mpsc::channel::<OrderPlantCommand>(32);
+        let (sub_tx, _sub_rx) = broadcast::channel(1024);
 
-        let mut order_plant = OrderPlant::new(req_rx, sub_tx.clone(), account_info, env)
+        let mut order_plant = OrderPlant::new(req_rx, sub_tx.clone(), account_info)
             .await
             .unwrap();
 
@@ -122,7 +121,7 @@ pub struct OrderPlant {
     interval: Interval,
     logged_in: bool,
     request_handler: RithmicRequestHandler,
-    request_receiver: tokio::sync::mpsc::Receiver<OrderPlantCommand>,
+    request_receiver: mpsc::Receiver<OrderPlantCommand>,
     rithmic_reader: SplitStream<tokio_tungstenite::WebSocketStream<MaybeTlsStream<TcpStream>>>,
     rithmic_receiver_api: RithmicReceiverApi,
     rithmic_sender: SplitSink<
@@ -130,17 +129,16 @@ pub struct OrderPlant {
         tokio_tungstenite::tungstenite::Message,
     >,
     rithmic_sender_api: RithmicSenderApi,
-    subscription_sender: Sender<RithmicResponse>,
+    subscription_sender: broadcast::Sender<RithmicResponse>,
 }
 
 impl OrderPlant {
     pub async fn new(
-        request_receiver: tokio::sync::mpsc::Receiver<OrderPlantCommand>,
-        subscription_sender: Sender<RithmicResponse>,
+        request_receiver: mpsc::Receiver<OrderPlantCommand>,
+        subscription_sender: broadcast::Sender<RithmicResponse>,
         account_info: &AccountInfo,
-        env: &RithmicConnectionSystem,
     ) -> Result<OrderPlant, String> {
-        let config = connection_info::get_config(env);
+        let config = connection_info::get_config(&account_info.env);
 
         let (ws_stream, _) = connect_async(&config.url).await.expect("Failed to connect");
         let (rithmic_sender, rithmic_reader) = ws_stream.split();
@@ -218,8 +216,10 @@ impl PlantActor for OrderPlant {
                         self.request_handler.handle_response(response);
                     }
                 }
-                Err(e) => {
-                    event!(Level::ERROR, "order_plant: response from server: {:?}", e);
+                Err(err) => {
+                    event!(Level::ERROR, "order_plant: response from server: {:?}", err);
+
+                    self.request_handler.handle_response(err);
                 }
             },
             Err(Error::ConnectionClosed) => {
@@ -286,6 +286,19 @@ impl PlantActor for OrderPlant {
                     .rithmic_sender
                     .send(Message::Binary(heartbeat_buf))
                     .await;
+            }
+            OrderPlantCommand::AccountList { response_sender } => {
+                let (req_buf, id) = self.rithmic_sender_api.request_account_list();
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                self.rithmic_sender
+                    .send(Message::Binary(req_buf))
+                    .await
+                    .unwrap();
             }
             OrderPlantCommand::SubscribeOrderUpdates { response_sender } => {
                 let (req_buf, id) = self
@@ -429,8 +442,8 @@ impl PlantActor for OrderPlant {
 }
 
 pub struct RithmicOrderPlantHandle {
-    sender: tokio::sync::mpsc::Sender<OrderPlantCommand>,
-    pub subscription_receiver: tokio::sync::broadcast::Receiver<RithmicResponse>,
+    sender: mpsc::Sender<OrderPlantCommand>,
+    pub subscription_receiver: broadcast::Receiver<RithmicResponse>,
 }
 
 impl RithmicOrderPlantHandle {
@@ -475,6 +488,18 @@ impl RithmicOrderPlantHandle {
         let _ = self.sender.send(OrderPlantCommand::Close).await;
 
         Ok(r.remove(0))
+    }
+
+    pub async fn get_account_list(&self) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = OrderPlantCommand::AccountList {
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
     pub async fn subscribe_order_updates(&self) -> Result<RithmicResponse, String> {

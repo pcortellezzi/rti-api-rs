@@ -1,4 +1,8 @@
 use async_trait::async_trait;
+use tokio_tungstenite::{
+    MaybeTlsStream, connect_async,
+    tungstenite::{Error, Message},
+};
 use tracing::{Level, event};
 
 use crate::{
@@ -8,10 +12,7 @@ use crate::{
     },
     connection_info::{self, AccountInfo},
     request_handler::{RithmicRequest, RithmicRequestHandler},
-    rti::{
-        request_login::SysInfraType,
-        request_market_data_update::{Request, UpdateBits},
-    },
+    rti::request_login::SysInfraType,
     ws::{PlantActor, RithmicStream, get_heartbeat_interval},
 };
 
@@ -20,18 +21,14 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
 };
 
-use tokio_tungstenite::{
-    MaybeTlsStream, connect_async,
-    tungstenite::{Error, Message},
-};
-
 use tokio::{
     net::TcpStream,
     sync::{broadcast, mpsc, oneshot},
+    task::JoinHandle,
     time::Interval,
 };
 
-pub enum TickerPlantCommand {
+pub enum HistoryPlantCommand {
     Close,
     Login {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
@@ -41,35 +38,35 @@ pub enum TickerPlantCommand {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
     SendHeartbeat {},
-    Subscribe {
-        symbol: String,
+    LoadTicks {
+        end_time_sec: i32,
         exchange: String,
-        fields: Vec<UpdateBits>,
-        request_type: Request,
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+        start_time_sec: i32,
+        symbol: String,
     },
 }
 
-pub struct RithmicTickerPlant {
-    pub connection_handle: tokio::task::JoinHandle<()>,
-    sender: mpsc::Sender<TickerPlantCommand>,
+pub struct RithmicHistoryPlant {
+    pub connection_handle: JoinHandle<()>,
+    sender: mpsc::Sender<HistoryPlantCommand>,
     subscription_sender: broadcast::Sender<RithmicResponse>,
 }
 
-impl RithmicTickerPlant {
-    pub async fn new(account_info: &AccountInfo) -> RithmicTickerPlant {
-        let (req_tx, req_rx) = mpsc::channel::<TickerPlantCommand>(32);
-        let (sub_tx, _sub_rx) = broadcast::channel(1024);
+impl RithmicHistoryPlant {
+    pub async fn new(account_info: &AccountInfo) -> RithmicHistoryPlant {
+        let (req_tx, req_rx) = mpsc::channel::<HistoryPlantCommand>(32);
+        let (sub_tx, _sub_rx) = broadcast::channel::<RithmicResponse>(20_000);
 
-        let mut ticker_plant = TickerPlant::new(req_rx, sub_tx.clone(), account_info)
+        let mut history_plant = HistoryPlant::new(req_rx, sub_tx.clone(), account_info)
             .await
             .unwrap();
 
         let connection_handle = tokio::spawn(async move {
-            ticker_plant.run().await;
+            history_plant.run().await;
         });
 
-        RithmicTickerPlant {
+        RithmicHistoryPlant {
             connection_handle,
             sender: req_tx,
             subscription_sender: sub_tx,
@@ -77,25 +74,25 @@ impl RithmicTickerPlant {
     }
 }
 
-impl RithmicStream for RithmicTickerPlant {
-    type Handle = RithmicTickerPlantHandle;
+impl RithmicStream for RithmicHistoryPlant {
+    type Handle = RithmicHistoryPlantHandle;
 
-    fn get_handle(&self) -> RithmicTickerPlantHandle {
-        RithmicTickerPlantHandle {
+    fn get_handle(&self) -> RithmicHistoryPlantHandle {
+        RithmicHistoryPlantHandle {
             sender: self.sender.clone(),
-            subscription_sender: self.subscription_sender.clone(),
             subscription_receiver: self.subscription_sender.subscribe(),
+            subscription_sender: self.subscription_sender.clone(),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct TickerPlant {
+pub struct HistoryPlant {
     config: connection_info::RithmicConnectionInfo,
     interval: Interval,
     logged_in: bool,
     request_handler: RithmicRequestHandler,
-    request_receiver: mpsc::Receiver<TickerPlantCommand>,
+    request_receiver: mpsc::Receiver<HistoryPlantCommand>,
     rithmic_reader: SplitStream<tokio_tungstenite::WebSocketStream<MaybeTlsStream<TcpStream>>>,
     rithmic_receiver_api: RithmicReceiverApi,
     rithmic_sender: SplitSink<
@@ -107,12 +104,12 @@ pub struct TickerPlant {
     subscription_sender: broadcast::Sender<RithmicResponse>,
 }
 
-impl TickerPlant {
-    async fn new(
-        request_receiver: mpsc::Receiver<TickerPlantCommand>,
+impl HistoryPlant {
+    pub async fn new(
+        request_receiver: mpsc::Receiver<HistoryPlantCommand>,
         subscription_sender: broadcast::Sender<RithmicResponse>,
         account_info: &AccountInfo,
-    ) -> Result<TickerPlant, ()> {
+    ) -> Result<HistoryPlant, ()> {
         let config = connection_info::get_config(&account_info.env);
 
         let (ws_stream, _) = connect_async(&config.url).await.expect("Failed to connect");
@@ -120,12 +117,12 @@ impl TickerPlant {
 
         let rithmic_sender_api = RithmicSenderApi::new(account_info);
         let rithmic_receiver_api = RithmicReceiverApi {
-            source: "ticker_plant".to_string(),
+            source: "history_plant".to_string(),
         };
 
         let interval = get_heartbeat_interval();
 
-        Ok(TickerPlant {
+        Ok(HistoryPlant {
             config,
             interval,
             logged_in: false,
@@ -133,40 +130,34 @@ impl TickerPlant {
             request_receiver,
             rithmic_reader,
             rithmic_receiver_api,
-            rithmic_sender_api,
             rithmic_sender,
+            rithmic_sender_api,
             subscription_sender,
         })
     }
 }
 
 #[async_trait]
-impl PlantActor for TickerPlant {
-    type Command = TickerPlantCommand;
+impl PlantActor for HistoryPlant {
+    type Command = HistoryPlantCommand;
 
-    /// Execute the ticker plant in its own thread
-    /// We will listen for messages from request_receiver and forward them to Rithmic
-    /// while also listening for messages from Rithmic and forwarding them to subscription_sender
-    /// or request handler
     async fn run(&mut self) {
         loop {
             tokio::select! {
-                _ = self.interval.tick() => {
-                    if self.logged_in {
-                        self.handle_command(TickerPlantCommand::SendHeartbeat {}).await;
-                    }
-                }
-                Some(message) = self.request_receiver.recv() => {
-                    self.handle_command(message).await;
-                }
-                Some(message) = self.rithmic_reader.next() => {
-                    let stop = self.handle_rithmic_message(message).await.unwrap();
+              _ = self.interval.tick() => {
+                self.handle_command(HistoryPlantCommand::SendHeartbeat {}).await;
+              }
+              Some(message) = self.request_receiver.recv() => {
+                self.handle_command(message).await;
+              }
+              Some(message) = self.rithmic_reader.next() => {
+                let stop = self.handle_rithmic_message(message).await.unwrap();
 
-                    if stop {
-                        break;
-                    }
+                if stop {
+                  break;
                 }
-                else => { break }
+              }
+              else => { break; }
             }
         }
     }
@@ -181,30 +172,46 @@ impl PlantActor for TickerPlant {
             Ok(Message::Close(frame)) => {
                 event!(
                     Level::INFO,
-                    "ticker_plant received close frame: {:?}",
+                    "history_plant: Received close frame: {:?}",
                     frame
                 );
-
                 stop = true;
             }
-            Ok(Message::Binary(data)) => {
-                let response = self.rithmic_receiver_api.buf_to_message(data).unwrap();
-
-                if response.is_update {
-                    self.subscription_sender.send(response).unwrap();
-                } else {
-                    self.request_handler.handle_response(response);
+            Ok(Message::Binary(data)) => match self.rithmic_receiver_api.buf_to_message(data) {
+                Ok(response) => {
+                    if response.is_update {
+                        match self.subscription_sender.send(response) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                event!(
+                                    Level::ERROR,
+                                    "history_plant: failed to send response: {:?}",
+                                    e
+                                );
+                            }
+                        };
+                    } else {
+                        self.request_handler.handle_response(response)
+                    }
                 }
-            }
-            Err(Error::ConnectionClosed) => {
-                event!(Level::INFO, "ticker_plant connection closed");
+                Err(err) => {
+                    event!(
+                        Level::ERROR,
+                        "history_plant: received an error message: {:?}",
+                        err
+                    );
 
+                    self.request_handler.handle_response(err);
+                }
+            },
+            Err(Error::ConnectionClosed) => {
+                event!(Level::INFO, "history_plant: Connection closed");
                 stop = true;
             }
             _ => {
                 event!(
                     Level::WARN,
-                    "ticker_plant received unknown message {:?}",
+                    "history_plant: Unhandled message {:?}",
                     message
                 );
             }
@@ -213,23 +220,23 @@ impl PlantActor for TickerPlant {
         Ok(stop)
     }
 
-    async fn handle_command(&mut self, command: TickerPlantCommand) {
+    async fn handle_command(&mut self, command: HistoryPlantCommand) {
         match command {
-            TickerPlantCommand::Close => {
+            HistoryPlantCommand::Close => {
                 self.rithmic_sender
                     .send(Message::Close(None))
                     .await
                     .unwrap();
             }
-            TickerPlantCommand::Login { response_sender } => {
+            HistoryPlantCommand::Login { response_sender } => {
                 let (login_buf, id) = self.rithmic_sender_api.request_login(
                     &self.config.system_name,
-                    SysInfraType::TickerPlant,
+                    SysInfraType::HistoryPlant,
                     &self.config.user,
                     &self.config.password,
                 );
 
-                event!(Level::INFO, "ticker_plant: sending login request {}", id);
+                event!(Level::INFO, "history_plant: sending login request {}", id);
 
                 self.request_handler.register_request(RithmicRequest {
                     request_id: id,
@@ -241,10 +248,10 @@ impl PlantActor for TickerPlant {
                     .await
                     .unwrap();
             }
-            TickerPlantCommand::SetLogin => {
+            HistoryPlantCommand::SetLogin => {
                 self.logged_in = true;
             }
-            TickerPlantCommand::Logout { response_sender } => {
+            HistoryPlantCommand::Logout { response_sender } => {
                 let (logout_buf, id) = self.rithmic_sender_api.request_logout();
 
                 self.request_handler.register_request(RithmicRequest {
@@ -257,26 +264,26 @@ impl PlantActor for TickerPlant {
                     .await
                     .unwrap();
             }
-            TickerPlantCommand::SendHeartbeat {} => {
-                let (heartbeat_buf, _id) = self.rithmic_sender_api.request_heartbeat();
+            HistoryPlantCommand::SendHeartbeat {} => {
+                let (heartbeat_bf, _id) = self.rithmic_sender_api.request_heartbeat();
 
                 let _ = self
                     .rithmic_sender
-                    .send(Message::Binary(heartbeat_buf))
+                    .send(Message::Binary(heartbeat_bf))
                     .await;
             }
-            TickerPlantCommand::Subscribe {
-                symbol,
+            HistoryPlantCommand::LoadTicks {
                 exchange,
-                fields,
-                request_type,
+                symbol,
+                start_time_sec,
+                end_time_sec,
                 response_sender,
             } => {
-                let (sub_buf, id) = self.rithmic_sender_api.request_market_data_update(
-                    &symbol,
-                    &exchange,
-                    fields,
-                    request_type,
+                let (tick_bar_replay_buf, id) = self.rithmic_sender_api.request_tick_bar_replay(
+                    exchange,
+                    symbol,
+                    start_time_sec,
+                    end_time_sec,
                 );
 
                 self.request_handler.register_request(RithmicRequest {
@@ -285,7 +292,7 @@ impl PlantActor for TickerPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(sub_buf))
+                    .send(Message::Binary(tick_bar_replay_buf))
                     .await
                     .unwrap();
             }
@@ -293,20 +300,20 @@ impl PlantActor for TickerPlant {
     }
 }
 
-pub struct RithmicTickerPlantHandle {
-    sender: mpsc::Sender<TickerPlantCommand>,
-
+pub struct RithmicHistoryPlantHandle {
+    sender: mpsc::Sender<HistoryPlantCommand>,
     subscription_sender: broadcast::Sender<RithmicResponse>,
+
     pub subscription_receiver: broadcast::Receiver<RithmicResponse>,
 }
 
-impl RithmicTickerPlantHandle {
+impl RithmicHistoryPlantHandle {
     pub async fn login(&self) -> Result<RithmicResponse, String> {
-        event!(Level::INFO, "ticker_plant: logging in");
+        event!(Level::INFO, "history_plant: logging in ");
 
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
-        let command = TickerPlantCommand::Login {
+        let command = HistoryPlantCommand::Login {
             response_sender: tx,
         };
 
@@ -314,15 +321,15 @@ impl RithmicTickerPlantHandle {
         let response = rx.await.unwrap().unwrap().remove(0);
 
         if response.error.is_none() {
-            let _ = self.sender.send(TickerPlantCommand::SetLogin).await;
+            let _ = self.sender.send(HistoryPlantCommand::SetLogin).await;
 
-            event!(Level::INFO, "ticker_plant: logged in");
+            event!(Level::INFO, "history_plant: logged in");
 
             Ok(response)
         } else {
             event!(
                 Level::ERROR,
-                "ticker_plant: login failed {:?}",
+                "history_plant: login failed {:?}",
                 response.error
             );
 
@@ -333,40 +340,43 @@ impl RithmicTickerPlantHandle {
     pub async fn disconnect(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
-        let command = TickerPlantCommand::Logout {
+        let command = HistoryPlantCommand::Logout {
             response_sender: tx,
         };
 
         let _ = self.sender.send(command).await;
-        let mut r = rx.await.unwrap().unwrap();
-        let _ = self.sender.send(TickerPlantCommand::Close).await;
-        let response = r.remove(0);
-
-        self.subscription_sender.send(response.clone()).unwrap();
+        let response = rx.await.unwrap().unwrap().remove(0);
+        let _ = self.sender.send(HistoryPlantCommand::Close).await;
 
         Ok(response)
     }
 
-    pub async fn subscribe(&self, symbol: &str, exchange: &str) -> Result<RithmicResponse, String> {
+    pub async fn load_ticks(
+        &self,
+        symbol: String,
+        exchange: String,
+        start_time_sec: i32,
+        end_time_sec: i32,
+    ) -> Result<Vec<RithmicResponse>, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
-        let command = TickerPlantCommand::Subscribe {
-            symbol: symbol.to_string(),
-            exchange: exchange.to_string(),
-            fields: vec![UpdateBits::LastTrade, UpdateBits::Bbo],
-            request_type: Request::Subscribe,
+        let command = HistoryPlantCommand::LoadTicks {
+            exchange,
+            symbol,
+            start_time_sec,
+            end_time_sec,
             response_sender: tx,
         };
 
         let _ = self.sender.send(command).await;
 
-        Ok(rx.await.unwrap().unwrap().remove(0))
+        Ok(rx.await.unwrap().unwrap())
     }
 }
 
-impl Clone for RithmicTickerPlantHandle {
+impl Clone for RithmicHistoryPlantHandle {
     fn clone(&self) -> Self {
-        RithmicTickerPlantHandle {
+        RithmicHistoryPlantHandle {
             sender: self.sender.clone(),
             subscription_receiver: self.subscription_sender.subscribe(),
             subscription_sender: self.subscription_sender.clone(),
