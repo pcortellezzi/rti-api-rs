@@ -14,8 +14,15 @@ Only `order_plant`, `ticker_plant`, `pnl_plant`, `history_plant` are provided. E
 Store your credentials in a `.env` file.
 
 ```sh
+# .env
 RITHMIC_TEST_USER=<USER_NAME>
 RITHMIC_TEST_PW=<PASSWORD>
+
+RITHMIC_DEMO_USER=<USER_NAME>
+RITHMIC_DEMO_PW=<PASSWORD>
+
+RITHMIC_LIVE_USER=<USER_NAME>
+RITHMIC_LIVE_PW=<PASSWORD>
 ```
 
 Rithmic supports three types of account environments, `RithmicConnectionSystem::Demo` is used for paper trading, `RithmicConnectionSystem::Live` will connect to your funded account, and `RithmicConnectionSystem::Test` connects to the test environment before your app is approved.
