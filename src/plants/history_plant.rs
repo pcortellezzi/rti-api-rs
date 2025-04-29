@@ -305,7 +305,7 @@ impl PlantActor for HistoryPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(login_buf))
+                    .send(Message::Binary(login_buf.into()))
                     .await
                     .unwrap();
             }
@@ -321,7 +321,7 @@ impl PlantActor for HistoryPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(logout_buf))
+                    .send(Message::Binary(logout_buf.into()))
                     .await
                     .unwrap();
             }
@@ -330,7 +330,7 @@ impl PlantActor for HistoryPlant {
 
                 let _ = self
                     .rithmic_sender
-                    .send(Message::Binary(heartbeat_bf))
+                    .send(Message::Binary(heartbeat_bf.into()))
                     .await;
             }
             HistoryPlantCommand::LoadTicks {
@@ -353,7 +353,7 @@ impl PlantActor for HistoryPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(tick_bar_replay_buf))
+                    .send(Message::Binary(tick_bar_replay_buf.into()))
                     .await
                     .unwrap();
             }

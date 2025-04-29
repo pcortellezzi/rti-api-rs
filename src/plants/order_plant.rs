@@ -346,7 +346,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(login_buf))
+                    .send(Message::Binary(login_buf.into()))
                     .await
                     .unwrap();
             }
@@ -362,7 +362,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(logout_buf))
+                    .send(Message::Binary(logout_buf.into()))
                     .await
                     .unwrap();
             }
@@ -371,7 +371,7 @@ impl PlantActor for OrderPlant {
 
                 let _ = self
                     .rithmic_sender
-                    .send(Message::Binary(heartbeat_buf))
+                    .send(Message::Binary(heartbeat_buf.into()))
                     .await;
             }
             OrderPlantCommand::AccountList { response_sender } => {
@@ -383,7 +383,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -398,7 +398,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -413,7 +413,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -429,7 +429,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -452,7 +452,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -468,7 +468,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -487,7 +487,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -506,7 +506,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }
@@ -519,7 +519,7 @@ impl PlantActor for OrderPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(req_buf))
+                    .send(Message::Binary(req_buf.into()))
                     .await
                     .unwrap();
             }

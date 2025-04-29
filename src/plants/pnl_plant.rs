@@ -295,7 +295,7 @@ impl PlantActor for PnlPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(login_buf))
+                    .send(Message::Binary(login_buf.into()))
                     .await
                     .unwrap();
             }
@@ -311,7 +311,7 @@ impl PlantActor for PnlPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(logout_buf))
+                    .send(Message::Binary(logout_buf.into()))
                     .await
                     .unwrap();
             }
@@ -320,7 +320,7 @@ impl PlantActor for PnlPlant {
 
                 let _ = self
                     .rithmic_sender
-                    .send(Message::Binary(heartbeat_buf))
+                    .send(Message::Binary(heartbeat_buf.into()))
                     .await;
             }
             PnlPlantCommand::SubscribePnlUpdates { response_sender } => {
@@ -334,7 +334,7 @@ impl PlantActor for PnlPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(subscribe_buf))
+                    .send(Message::Binary(subscribe_buf.into()))
                     .await
                     .unwrap();
             }
@@ -347,7 +347,7 @@ impl PlantActor for PnlPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(snapshot_buf))
+                    .send(Message::Binary(snapshot_buf.into()))
                     .await
                     .unwrap();
             }

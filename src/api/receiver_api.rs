@@ -1,21 +1,21 @@
+use prost::{Message, bytes::Bytes};
 use std::io::Cursor;
+use tracing::{Level, event};
 
 use crate::rti::{
-    messages::RithmicMessage, AccountPnLPositionUpdate, BestBidOffer, BracketUpdates,
-    ExchangeOrderNotification, ForcedLogout, InstrumentPnLPositionUpdate, LastTrade, MessageType,
-    Reject, ResponseAccountList, ResponseAccountRmsInfo, ResponseBracketOrder,
-    ResponseCancelAllOrders, ResponseCancelOrder, ResponseExitPosition, ResponseHeartbeat,
-    ResponseLogin, ResponseLogout, ResponseMarketDataUpdate, ResponseModifyOrder, ResponseNewOrder,
-    ResponsePnLPositionSnapshot, ResponsePnLPositionUpdates, ResponseProductRmsInfo,
-    ResponseRithmicSystemInfo, ResponseSearchSymbols, ResponseShowBracketStops,
-    ResponseShowBrackets, ResponseShowOrderHistory, ResponseShowOrderHistoryDates,
-    ResponseShowOrderHistoryDetail, ResponseShowOrderHistorySummary, ResponseShowOrders,
-    ResponseSubscribeForOrderUpdates, ResponseSubscribeToBracketUpdates, ResponseTickBarReplay,
-    ResponseTimeBarReplay, ResponseTradeRoutes, ResponseUpdateStopBracketLevel,
-    ResponseUpdateTargetBracketLevel, RithmicOrderNotification, TickBar, TimeBar,
+    AccountPnLPositionUpdate, BestBidOffer, BracketUpdates, ExchangeOrderNotification,
+    ForcedLogout, InstrumentPnLPositionUpdate, LastTrade, MessageType, Reject, ResponseAccountList,
+    ResponseAccountRmsInfo, ResponseBracketOrder, ResponseCancelAllOrders, ResponseCancelOrder,
+    ResponseExitPosition, ResponseHeartbeat, ResponseLogin, ResponseLogout,
+    ResponseMarketDataUpdate, ResponseModifyOrder, ResponseNewOrder, ResponsePnLPositionSnapshot,
+    ResponsePnLPositionUpdates, ResponseProductRmsInfo, ResponseRithmicSystemInfo,
+    ResponseSearchSymbols, ResponseShowBracketStops, ResponseShowBrackets,
+    ResponseShowOrderHistory, ResponseShowOrderHistoryDates, ResponseShowOrderHistoryDetail,
+    ResponseShowOrderHistorySummary, ResponseShowOrders, ResponseSubscribeForOrderUpdates,
+    ResponseSubscribeToBracketUpdates, ResponseTickBarReplay, ResponseTimeBarReplay,
+    ResponseTradeRoutes, ResponseUpdateStopBracketLevel, ResponseUpdateTargetBracketLevel,
+    RithmicOrderNotification, TickBar, TimeBar, messages::RithmicMessage,
 };
-use prost::Message;
-use tracing::{event, Level};
 
 #[derive(Debug, Clone)]
 pub struct RithmicResponse {
@@ -34,7 +34,7 @@ pub struct RithmicReceiverApi {
 }
 
 impl RithmicReceiverApi {
-    pub fn buf_to_message(&self, data: Vec<u8>) -> Result<RithmicResponse, RithmicResponse> {
+    pub fn buf_to_message(&self, data: Bytes) -> Result<RithmicResponse, RithmicResponse> {
         let parsed_message = MessageType::decode(&mut Cursor::new(&data[4..]));
 
         let response = match parsed_message.clone().unwrap().template_id {

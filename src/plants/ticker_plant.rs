@@ -301,7 +301,7 @@ impl PlantActor for TickerPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(login_buf))
+                    .send(Message::Binary(login_buf.into()))
                     .await
                     .unwrap();
             }
@@ -317,7 +317,7 @@ impl PlantActor for TickerPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(logout_buf))
+                    .send(Message::Binary(logout_buf.into()))
                     .await
                     .unwrap();
             }
@@ -326,7 +326,7 @@ impl PlantActor for TickerPlant {
 
                 let _ = self
                     .rithmic_sender
-                    .send(Message::Binary(heartbeat_buf))
+                    .send(Message::Binary(heartbeat_buf.into()))
                     .await;
             }
             TickerPlantCommand::Subscribe {
@@ -349,7 +349,7 @@ impl PlantActor for TickerPlant {
                 });
 
                 self.rithmic_sender
-                    .send(Message::Binary(sub_buf))
+                    .send(Message::Binary(sub_buf.into()))
                     .await
                     .unwrap();
             }
