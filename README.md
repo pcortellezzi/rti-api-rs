@@ -1,19 +1,25 @@
 ## Rust Rithmic R | Protocol API client
 
-Unofficial rust client for connecting to Rithmic's R | Protocal API.
+Unofficial rust client for connecting to Rithmic's R | Protocol API.
 
 https://www.rithmic.com/apis
 
-As is, use at your own risk.
 
-Not all functionality has been implemented, but this is being used to trade live capital through Rithmic.
+Not all functionality has been implemented, but this is currently being used to trade live capital through Rithmic.
 
-Only `order_plant`, `ticker_plant`, and `pnl_plant` are provided. It uses the actor pattern so you'll want to start the plant, and communicate with it using the handle.
+Only `order_plant`, `ticker_plant`, `pnl_plant`, `history_plant` are provided. Each plant uses the actor pattern so you'll want to start a plant, and communicate / call commands with it using it's handle. The crate is setup to be used with tokio channels.
 
 ### Example Usage:
 
+Store your credentials in a `.env` file.
+
+```sh
+RITHMIC_TEST_USER=<USER_NAME>
+RITHMIC_TEST_PW=<PASSWORD>
+```
+
 ```rust
-pub async fn stream_live_ticks(&self, env: &RithmicConnectionSystem, account_info: &AccountInfo) {
+pub async fn stream_live_ticks(&self, env: &RithmicConnectionSystem, account_info: &AccountInfo) -> Result<(), Box<dyn std::error::Error>> {
     event!(Level::INFO, "market-data streaming ticks");
 
     let ticker_plant = RithmicTickerPlant::new(env, account_info).await;
@@ -35,10 +41,40 @@ pub async fn stream_live_ticks(&self, env: &RithmicConnectionSystem, account_inf
         }
     }
 
-    for (base_symbol, symbol) in self.base_symbol_to_symbol_map.iter() {
-        let _ = ticker_plant_handle
-            .subscribe(symbol, base_symbol.get_exchange().as_str())
-            .await;
+    handle.subscribe("ESM5", "CME").await?;
+
+    loop {
+        let message = ticker_plant_handle.subscription_receiver.recv().await;
+
+        match message {
+            Ok(update) => {
+                match update.message {
+                    RithmicMessage::LastTrade(u) => {
+                        let tick = Tick {
+                            dir: u.aggressor.unwrap(),
+                            price: u.trade_price.unwrap(),
+                            vol: u.trade_size.unwrap(),
+                            utime: u.ssboe.unwrap() as i64 * 1_000_000 + u.usecs.unwrap() as i64
+                        };
+
+                        if let Some(s) = self.stream_map.get(&u.symbol.unwrap()) {
+                            if let Err(e) = s.send(tick) {
+                                event!(Level::ERROR, "market-data: failed to send tick: {}", e);
+                            };
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Err(RecvError::Lagged(count)) => {
+                event!(Level::WARN, "{} messages lagged", count);
+            }
+            Err(err) => {
+                event!(Level::ERROR, "received error {:?}", err);
+
+                break;
+            }
+        }
     }
 }
 ```

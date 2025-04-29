@@ -78,6 +78,86 @@ pub enum OrderPlantCommand {
     },
 }
 
+/// The RithmicOrderPlant provides functionality to manage trading orders through the Rithmic API.
+///
+/// It allows applications to:
+/// - Place, modify and cancel orders
+/// - Work with bracket orders (entry orders with profit targets and stop losses)
+/// - Receive real-time order status updates
+/// - Track positions and execution reports
+///
+/// # Example
+///
+/// ```no_run
+/// use rithmic_rs::{
+///     connection_info::{AccountInfo, RithmicConnectionSystem},
+///     plants::order_plant::RithmicOrderPlant,
+///     api::rithmic_command_types::{RithmicBracketOrder, OrderType, Side}
+/// };
+/// use tokio::time::{sleep, Duration};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Step 1: Create connection credentials
+///     let account_info = AccountInfo {
+///         account_id: "your_account".to_string(),
+///         env: RithmicConnectionSystem::Demo,
+///         fcm_id: "your_fcm".to_string(),
+///         ib_id: "your_ib".to_string(),
+///     };
+///
+///     // Step 2: Create the order plant instance
+///     let order_plant = RithmicOrderPlant::new(&account_info).await;
+///
+///     // Step 3: Get a handle to interact with the plant
+///     let handle = order_plant.get_handle();
+///
+///     // Step 4: Login to the order plant
+///     handle.login().await?;
+///
+///     // Step 5: Subscribe to order updates
+///     handle.subscribe_order_updates().await?;
+///     handle.subscribe_bracket_updates().await?;
+///
+///     // Step 6: Get account information
+///     let accounts = handle.get_account_list().await?;
+///     println!("Available accounts: {:?}", accounts);
+///
+///     // Step 7: Place a bracket order
+///     let bracket_order = RithmicBracketOrder {
+///         account: "your_account".to_string(),
+///         symbol: "ESM1".to_string(),
+///         exchange: "CME".to_string(),
+///         quantity: 1,
+///         side: Side::Buy,
+///         order_type: OrderType::Limit,
+///         price: 4500.00,
+///         stop_ticks: 4,    // 4 ticks for stop loss
+///         target_ticks: 8,  // 8 ticks for profit target
+///         tif: "Day".to_string(),
+///     };
+///
+///     let order_result = handle.place_bracket_order(bracket_order).await?;
+///     println!("Order placement result: {:?}", order_result);
+///
+///     // Step 8: Monitor order updates
+///     for _ in 0..5 {
+///         match handle.subscription_receiver.recv().await {
+///             Ok(update) => {
+///                 match update.message {
+///                     RithmicMessage::RithmicOrderNotification(u) => {}
+///                     RithmicMessage::ExchangeOrderNotification(u) => {}
+///                     _ => {}
+///                 },
+///             }
+///     }
+///
+///     // Step 9: Disconnect when done
+///     handle.disconnect().await?;
+///
+///     Ok(())
+/// }
+/// ```
 pub struct RithmicOrderPlant {
     pub connection_handle: tokio::task::JoinHandle<()>,
     sender: mpsc::Sender<OrderPlantCommand>,
@@ -85,6 +165,13 @@ pub struct RithmicOrderPlant {
 }
 
 impl RithmicOrderPlant {
+    /// Create a new Order Plant connection
+    ///
+    /// # Arguments
+    /// * `account_info` - Account credentials and environment settings
+    ///
+    /// # Returns
+    /// A new `RithmicOrderPlant` instance connected to the Rithmic server
     pub async fn new(account_info: &AccountInfo) -> RithmicOrderPlant {
         let (req_tx, req_rx) = mpsc::channel::<OrderPlantCommand>(32);
         let (sub_tx, _sub_rx) = broadcast::channel(1024);
@@ -447,6 +534,12 @@ pub struct RithmicOrderPlantHandle {
 }
 
 impl RithmicOrderPlantHandle {
+    /// Log in to the Rithmic Order plant
+    ///
+    /// This must be called before sending orders or subscriptions
+    ///
+    /// # Returns
+    /// The login response or an error message
     pub async fn login(&self) -> Result<RithmicResponse, String> {
         event!(Level::INFO, "order_plant: logging in");
 
@@ -476,6 +569,10 @@ impl RithmicOrderPlantHandle {
         }
     }
 
+    /// Disconnect from the Rithmic Order plant
+    ///
+    /// # Returns
+    /// The logout response or an error message
     pub async fn disconnect(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -490,6 +587,10 @@ impl RithmicOrderPlantHandle {
         Ok(r.remove(0))
     }
 
+    /// Get a list of available trading accounts
+    ///
+    /// # Returns
+    /// The account list response or an error message
     pub async fn get_account_list(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -502,6 +603,10 @@ impl RithmicOrderPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Subscribe to order status updates
+    ///
+    /// # Returns
+    /// The subscription response or an error message
     pub async fn subscribe_order_updates(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -514,6 +619,10 @@ impl RithmicOrderPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Subscribe to bracket order status updates
+    ///
+    /// # Returns
+    /// The subscription response or an error message
     pub async fn subscribe_bracket_updates(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -526,6 +635,13 @@ impl RithmicOrderPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Place a bracket order (entry order with profit target and stop loss)
+    ///
+    /// # Arguments
+    /// * `bracket_order` - The bracket order parameters
+    ///
+    /// # Returns
+    /// The order placement responses or an error message
     pub async fn place_bracket_order(
         &self,
         bracket_order: RithmicBracketOrder,
@@ -542,6 +658,13 @@ impl RithmicOrderPlantHandle {
         rx.await.unwrap()
     }
 
+    /// Modify an existing order
+    ///
+    /// # Arguments
+    /// * `order` - The order parameters to modify
+    ///
+    /// # Returns
+    /// The order modification response or an error message
     pub async fn modify_order(&self, order: RithmicModifyOrder) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -555,6 +678,13 @@ impl RithmicOrderPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Cancel an order
+    ///
+    /// # Arguments
+    /// * `order` - The cancel order parameters
+    ///
+    /// # Returns
+    /// The cancellation response or an error message
     pub async fn cancel_order(&self, order: RithmicCancelOrder) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -568,6 +698,14 @@ impl RithmicOrderPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Adjust the profit target level of a bracket order
+    ///
+    /// # Arguments
+    /// * `id` - The order ID
+    /// * `ticks` - Number of ticks to adjust the profit target
+    ///
+    /// # Returns
+    /// The adjustment response or an error message
     pub async fn adjust_profit(&self, id: &str, ticks: i32) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -582,6 +720,14 @@ impl RithmicOrderPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Adjust the stop loss level of a bracket order
+    ///
+    /// # Arguments
+    /// * `id` - The order ID
+    /// * `ticks` - Number of ticks to adjust the stop loss
+    ///
+    /// # Returns
+    /// The adjustment response or an error message
     pub async fn adjust_stop(&self, id: &str, ticks: i32) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -596,6 +742,10 @@ impl RithmicOrderPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Request a list of all open orders
+    ///
+    /// # Returns
+    /// The order list response or an error message
     pub async fn show_orders(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 

@@ -50,6 +50,63 @@ pub enum TickerPlantCommand {
     },
 }
 
+/// The RithmicTickerPlant provides access to real-time market data.
+///
+/// Currently the following market data updates are supported:
+/// - Last trades
+/// - Best bid and offer (BBO)
+///
+/// * NOTE: Feel free to add missing ones and contribute back.
+///
+/// # Example
+///
+/// ```no_run
+/// use rithmic_rs::{connection_info::AccountInfo, plants::ticker_plant::RithmicTickerPlant};
+/// use tokio::time::{sleep, Duration};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Step 1: Create connection credentials
+///     let account_info = AccountInfo {
+///         account_id: "your_account".to_string(),
+///         env: RithmicConnectionSystem::Demo,
+///         fcm_id: "your_fcm".to_string(),
+///         ib_id: "your_ib".to_string(),
+///     };
+///
+///     // Step 2: Create the ticker plant instance
+///     let ticker_plant = RithmicTickerPlant::new(&account_info).await;
+///
+///     // Step 3: Get a handle to interact with the plant
+///     let handle = ticker_plant.get_handle();
+///
+///     // Step 4: Login to the ticker plant
+///     handle.login().await?;
+///
+///     // Step 5: Subscribe to market data for a symbol
+///     let subscription_result = handle.subscribe("ESM1", "CME").await?;
+///     println!("Subscription successful: {:?}", subscription_result);
+///
+///     // Step 6: Process incoming market data updates
+///     for _ in 0..10 {
+///         match handle.subscription_receiver.recv().await {
+///             Ok(update) => {
+///                 match update.message {
+///                     RithmicMessage::LastTrade(u) => {}
+///                     RithmicMessage::BestBidOffer(u) => {}
+///                     _ => {}
+///                 },
+///             }
+///             Err(e) => println!("Error receiving update: {}", e),
+///         }
+///     }
+///
+///     // Step 7: Disconnect when done
+///     handle.disconnect().await?;
+///
+///     Ok(())
+/// }
+/// ```
 pub struct RithmicTickerPlant {
     pub connection_handle: tokio::task::JoinHandle<()>,
     sender: mpsc::Sender<TickerPlantCommand>,
@@ -57,6 +114,13 @@ pub struct RithmicTickerPlant {
 }
 
 impl RithmicTickerPlant {
+    /// Creates a new Ticker Plant connection to access real-time market data.
+    ///
+    /// # Arguments
+    /// * `account_info` - Account credentials and environment settings
+    ///
+    /// # Returns
+    /// A new `RithmicTickerPlant` instance connected to the Rithmic server
     pub async fn new(account_info: &AccountInfo) -> RithmicTickerPlant {
         let (req_tx, req_rx) = mpsc::channel::<TickerPlantCommand>(32);
         let (sub_tx, _sub_rx) = broadcast::channel(1024);
@@ -297,10 +361,17 @@ pub struct RithmicTickerPlantHandle {
     sender: mpsc::Sender<TickerPlantCommand>,
 
     subscription_sender: broadcast::Sender<RithmicResponse>,
+    /// Receiver for subscription updates
     pub subscription_receiver: broadcast::Receiver<RithmicResponse>,
 }
 
 impl RithmicTickerPlantHandle {
+    /// Log in to the Rithmic ticker plant
+    ///
+    /// This must be called before subscribing to any market data
+    ///
+    /// # Returns
+    /// The login response or an error message
     pub async fn login(&self) -> Result<RithmicResponse, String> {
         event!(Level::INFO, "ticker_plant: logging in");
 
@@ -330,6 +401,10 @@ impl RithmicTickerPlantHandle {
         }
     }
 
+    /// Disconnect from the Rithmic ticker plant
+    ///
+    /// # Returns
+    /// The logout response or an error message
     pub async fn disconnect(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -347,6 +422,14 @@ impl RithmicTickerPlantHandle {
         Ok(response)
     }
 
+    /// Subscribe to market data for a specific symbol
+    ///
+    /// # Arguments
+    /// * `symbol` - The trading symbol (e.g., "ESM1")
+    /// * `exchange` - The exchange code (e.g., "CME")
+    ///
+    /// # Returns
+    /// The subscription response or an error message
     pub async fn subscribe(&self, symbol: &str, exchange: &str) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 

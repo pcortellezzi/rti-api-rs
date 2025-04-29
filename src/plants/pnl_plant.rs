@@ -46,6 +46,65 @@ pub enum PnlPlantCommand {
     },
 }
 
+/// The RithmicPnlPlant provides access to profit and loss (PnL) information through the Rithmic API.
+///
+/// It allows applications to:
+/// - Retrieve current PnL information for positions
+/// - Subscribe to real-time PnL updates
+/// - Track position changes and risk metrics
+///
+/// # Example
+///
+/// ```no_run
+/// use rithmic_rs::{connection_info::{AccountInfo, RithmicConnectionSystem}, plants::pnl_plant::RithmicPnlPlant};
+/// use tokio::time::{sleep, Duration};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Step 1: Create connection credentials
+///     let account_info = AccountInfo {
+///         account_id: "your_account".to_string(),
+///         env: RithmicConnectionSystem::Demo,
+///         fcm_id: "your_fcm".to_string(),
+///         ib_id: "your_ib".to_string(),
+///     };
+///
+///     // Step 2: Create the PnL plant instance
+///     let pnl_plant = RithmicPnlPlant::new(&account_info).await;
+///
+///     // Step 3: Get a handle to interact with the plant
+///     let handle = pnl_plant.get_handle();
+///
+///     // Step 4: Login to the PnL plant
+///     handle.login().await?;
+///
+///     // Step 5: Get a current snapshot of all PnL positions
+///     let snapshots = handle.pnl_position_snapshots().await?;
+///     println!("PnL position snapshot: {:?}", snapshots);
+///
+///     // Step 6: Subscribe to ongoing PnL updates
+///     handle.subscribe_pnl_updates().await?;
+///
+///     // Step 7: Process real-time PnL updates
+///     for _ in 0..5 {
+///         match handle.subscription_receiver.recv().await {
+///             Ok(update) => {
+///                 match update.message {
+///                     RithmicMessage::AccountPnLPositionUpdate(u) => {}
+///                     RithmicMessage::InstrumentPnLPositionUpdate => {}
+///                     _ => {}
+///                 }
+///             },
+///             Err(e) => println!("Error receiving update: {}", e),
+///         }
+///     }
+///
+///     // Step 8: Disconnect when done
+///     handle.disconnect().await?;
+///
+///     Ok(())
+/// }
+/// ```
 pub struct RithmicPnlPlant {
     pub connection_handle: tokio::task::JoinHandle<()>,
     sender: mpsc::Sender<PnlPlantCommand>,
@@ -53,6 +112,13 @@ pub struct RithmicPnlPlant {
 }
 
 impl RithmicPnlPlant {
+    /// Create a new PnL Plant connection
+    ///
+    /// # Arguments
+    /// * `account_info` - Account credentials and environment settings
+    ///
+    /// # Returns
+    /// A new `RithmicPnlPlant` instance connected to the Rithmic server
     pub async fn new(account_info: &AccountInfo) -> RithmicPnlPlant {
         let (req_tx, req_rx) = mpsc::channel::<PnlPlantCommand>(32);
         let (sub_tx, _sub_rx) = broadcast::channel(1024);
@@ -295,6 +361,12 @@ pub struct RithmicPnlPlantHandle {
 }
 
 impl RithmicPnlPlantHandle {
+    /// Log in to the Rithmic PnL plant
+    ///
+    /// This must be called before subscribing to any PnL data
+    ///
+    /// # Returns
+    /// The login response or an error message
     pub async fn login(&self) -> Result<RithmicResponse, String> {
         event!(Level::INFO, "pnl_plant: logging in");
 
@@ -320,6 +392,10 @@ impl RithmicPnlPlantHandle {
         }
     }
 
+    /// Disconnect from the Rithmic PnL plant
+    ///
+    /// # Returns
+    /// The logout response or an error message
     pub async fn disconnect(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -334,6 +410,10 @@ impl RithmicPnlPlantHandle {
         Ok(r.remove(0))
     }
 
+    /// Subscribe to PnL updates for all positions
+    ///
+    /// # Returns
+    /// The subscription response or an error message
     pub async fn subscribe_pnl_updates(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -346,6 +426,10 @@ impl RithmicPnlPlantHandle {
         Ok(rx.await.unwrap().unwrap().remove(0))
     }
 
+    /// Request a snapshot of all current position PnL data
+    ///
+    /// # Returns
+    /// The position snapshot response or an error message
     pub async fn pnl_position_snapshots(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 

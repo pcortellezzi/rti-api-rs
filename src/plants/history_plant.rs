@@ -47,6 +47,60 @@ pub enum HistoryPlantCommand {
     },
 }
 
+/// The RithmicHistoryPlant provides access to historical market data through the Rithmic API.
+///
+/// It allows applications to retrieve historical tick data for specific instruments and time ranges
+/// from Rithmic's history database.
+///
+/// # Example
+///
+/// ```no_run
+/// use rithmic_rs::{connection_info::{AccountInfo, RithmicConnectionSystem}, plants::history_plant::RithmicHistoryPlant};
+/// use tokio::time::{sleep, Duration};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Step 1: Create connection credentials
+///     let account_info = AccountInfo {
+///         account_id: "your_account".to_string(),
+///         env: RithmicConnectionSystem::Demo,
+///         fcm_id: "your_fcm".to_string(),
+///         ib_id: "your_ib".to_string(),
+///     };
+///
+///     // Step 2: Create the history plant instance
+///     let history_plant = RithmicHistoryPlant::new(&account_info).await;
+///
+///     // Step 3: Get a handle to interact with the plant
+///     let handle = history_plant.get_handle();
+///
+///     // Step 4: Login to the history plant
+///     handle.login().await?;
+///
+///     // Step 5: Load historical tick data
+///     let now = std::time::SystemTime::now()
+///         .duration_since(std::time::UNIX_EPOCH)
+///         .unwrap()
+///         .as_secs() as i32;
+///
+///     // Get the last hour of data
+///     let one_hour_ago = now - 3600;
+///
+///     let ticks = handle.load_ticks(
+///         "ESM1".to_string(),
+///         "CME".to_string(),
+///         one_hour_ago,
+///         now,
+///     ).await?;
+///
+///     println!("Received {} tick responses", ticks.len());
+///
+///     // Step 6: Disconnect when done
+///     handle.disconnect().await?;
+///
+///     Ok(())
+/// }
+/// ```
 pub struct RithmicHistoryPlant {
     pub connection_handle: JoinHandle<()>,
     sender: mpsc::Sender<HistoryPlantCommand>,
@@ -54,6 +108,13 @@ pub struct RithmicHistoryPlant {
 }
 
 impl RithmicHistoryPlant {
+    /// Create a new History Plant connection
+    ///
+    /// # Arguments
+    /// * `account_info` - Account credentials and environment settings
+    ///
+    /// # Returns
+    /// A new `RithmicHistoryPlant` instance connected to the Rithmic server
     pub async fn new(account_info: &AccountInfo) -> RithmicHistoryPlant {
         let (req_tx, req_rx) = mpsc::channel::<HistoryPlantCommand>(32);
         let (sub_tx, _sub_rx) = broadcast::channel::<RithmicResponse>(20_000);
@@ -308,6 +369,12 @@ pub struct RithmicHistoryPlantHandle {
 }
 
 impl RithmicHistoryPlantHandle {
+    /// Log in to the Rithmic History plant
+    ///
+    /// This must be called before requesting historical data
+    ///
+    /// # Returns
+    /// The login response or an error message
     pub async fn login(&self) -> Result<RithmicResponse, String> {
         event!(Level::INFO, "history_plant: logging in ");
 
@@ -337,6 +404,10 @@ impl RithmicHistoryPlantHandle {
         }
     }
 
+    /// Disconnect from the Rithmic History plant
+    ///
+    /// # Returns
+    /// The logout response or an error message
     pub async fn disconnect(&self) -> Result<RithmicResponse, String> {
         let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
 
@@ -351,6 +422,16 @@ impl RithmicHistoryPlantHandle {
         Ok(response)
     }
 
+    /// Load historical tick data for a specific symbol and time range
+    ///
+    /// # Arguments
+    /// * `symbol` - The trading symbol (e.g., "ESM1")
+    /// * `exchange` - The exchange code (e.g., "CME")
+    /// * `start_time_sec` - Start time in Unix timestamp (seconds)
+    /// * `end_time_sec` - End time in Unix timestamp (seconds)
+    ///
+    /// # Returns
+    /// The historical data responses or an error message
     pub async fn load_ticks(
         &self,
         symbol: String,
