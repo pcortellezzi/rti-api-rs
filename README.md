@@ -1,15 +1,15 @@
-## Rust Rithmic R | Protocol API client
+# Rust Rithmic R | Protocol API client
 
 Unofficial rust client for connecting to Rithmic's R | Protocol API.
 
-https://www.rithmic.com/apis
+[Documentation](https://docs.rs/rithmic-rs/latest/rithmic_rs/) | [Rithmic APIs](https://www.rithmic.com/apis)
 
 
 Not all functionality has been implemented, but this is currently being used to trade live capital through Rithmic.
 
 Only `order_plant`, `ticker_plant`, `pnl_plant`, `history_plant` are provided. Each plant uses the actor pattern so you'll want to start a plant, and communicate / call commands with it using it's handle. The crate is setup to be used with tokio channels.
 
-### Example Usage:
+## Usage
 
 Store your credentials in a `.env` file.
 
@@ -18,8 +18,16 @@ RITHMIC_TEST_USER=<USER_NAME>
 RITHMIC_TEST_PW=<PASSWORD>
 ```
 
+Rithmic supports three types of account environments, `RithmicConnectionSystem::Demo` is used for paper trading, `RithmicConnectionSystem::Live` will connect to your funded account, and `RithmicConnectionSystem::Test` connects to the test environment before your app is approved.
+
+To use this crate, pass in your account information to one of the plants. Doing so will spawn an actor in a new thread that listens to commands that you send via a handle. Some plants like the ticker plant will also include a broadcast channel that you can listen to for wire level updates.
+
 ```rust
-pub async fn stream_live_ticks(&self, env: &RithmicConnectionSystem, account_info: &AccountInfo) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn stream_live_ticks(
+    &self,
+    env: &RithmicConnectionSystem,
+    account_info: &AccountInfo
+) -> Result<(), Box<dyn std::error::Error>> {
     event!(Level::INFO, "market-data streaming ticks");
 
     let ticker_plant = RithmicTickerPlant::new(env, account_info).await;
@@ -81,12 +89,12 @@ pub async fn stream_live_ticks(&self, env: &RithmicConnectionSystem, account_inf
 
 ## License
 
-Licensed under either of
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
+[MIT license](LICENSE-MIT) at your option.
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall
+be dual licensed as above, without any additional terms or conditions.
 
 ## Contribution
 
