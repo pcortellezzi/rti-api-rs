@@ -20,12 +20,12 @@
 //! - `rti`: Contains definitions for RTI protocol messages
 //! - `ws`: WebSocket connectivity layer
 
-mod api;
-mod request_handler;
+pub mod api;
 /// Connection information and configuration
 pub mod connection_info;
 /// Plants for handling different types of market data and order interactions
 pub mod plants;
+mod request_handler;
 /// Definitions for RTI protocol messages
 pub mod rti;
 /// WebSocket connectivity layer
