@@ -1,6 +1,6 @@
 [package]
 name = "rithmic-rs"
-version = "0.3.2"
+version = "0.3.3"
 description = "Rust client for the Rithmic R | Protocol API to build algo trading systems"
 license = "MIT OR Apache-2.0"
 edition = "2024"
@@ -17,7 +17,7 @@ async-trait = "0.1.88"
 dotenv = "0.15.0"
 futures-util = "0.3.31"
 prost = "0.13.5"
-tokio = { version = "1.44.2", features = ["full"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "macros", "net", "time", "sync"] }
 tokio-tungstenite = { version = "0.26.2", features = ["native-tls"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
