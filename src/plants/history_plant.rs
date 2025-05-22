@@ -1,9 +1,10 @@
 use async_trait::async_trait;
+use tracing::{Level, event};
+
 use tokio_tungstenite::{
-    MaybeTlsStream, connect_async,
+    MaybeTlsStream,
     tungstenite::{Error, Message},
 };
-use tracing::{Level, event};
 
 use crate::{
     api::{
@@ -13,7 +14,7 @@ use crate::{
     connection_info::{self, AccountInfo},
     request_handler::{RithmicRequest, RithmicRequestHandler},
     rti::request_login::SysInfraType,
-    ws::{PlantActor, RithmicStream, get_heartbeat_interval},
+    ws::{PlantActor, RithmicStream, connect_with_retry, get_heartbeat_interval},
 };
 
 use futures_util::{
@@ -30,6 +31,9 @@ use tokio::{
 
 pub enum HistoryPlantCommand {
     Close,
+    ListSystemInfo {
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
     Login {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
@@ -173,7 +177,10 @@ impl HistoryPlant {
     ) -> Result<HistoryPlant, ()> {
         let config = connection_info::get_config(&account_info.env);
 
-        let (ws_stream, _) = connect_async(&config.url).await.expect("Failed to connect");
+        let ws_stream = connect_with_retry(&config.url, 15)
+            .await
+            .expect("failed to connect to history plant");
+
         let (rithmic_sender, rithmic_reader) = ws_stream.split();
 
         let rithmic_sender_api = RithmicSenderApi::new(account_info);
@@ -289,6 +296,20 @@ impl PlantActor for HistoryPlant {
                     .await
                     .unwrap();
             }
+            HistoryPlantCommand::ListSystemInfo { response_sender } => {
+                let (list_system_info_buf, id) =
+                    self.rithmic_sender_api.request_rithmic_system_info();
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                self.rithmic_sender
+                    .send(Message::Binary(list_system_info_buf.into()))
+                    .await
+                    .unwrap();
+            }
             HistoryPlantCommand::Login { response_sender } => {
                 let (login_buf, id) = self.rithmic_sender_api.request_login(
                     &self.config.system_name,
@@ -369,6 +390,22 @@ pub struct RithmicHistoryPlantHandle {
 }
 
 impl RithmicHistoryPlantHandle {
+    /// Get the list of available systems
+    ///
+    /// # Returns
+    /// The list of systems response or an error message
+    pub async fn list_system_info(&self) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = HistoryPlantCommand::ListSystemInfo {
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap().unwrap().remove(0))
+    }
+
     /// Log in to the Rithmic History plant
     ///
     /// This must be called before requesting historical data

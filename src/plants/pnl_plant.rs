@@ -9,7 +9,7 @@ use crate::{
     connection_info::{self, AccountInfo},
     request_handler::{RithmicRequest, RithmicRequestHandler},
     rti::{request_login::SysInfraType, request_pn_l_position_updates},
-    ws::{PlantActor, RithmicStream, get_heartbeat_interval},
+    ws::{PlantActor, RithmicStream, connect_with_retry, get_heartbeat_interval},
 };
 
 use futures_util::{
@@ -24,12 +24,15 @@ use tokio::{
 };
 
 use tokio_tungstenite::{
-    MaybeTlsStream, connect_async,
+    MaybeTlsStream,
     tungstenite::{Error, Message},
 };
 
 pub enum PnlPlantCommand {
     Close,
+    ListSystemInfo {
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
     Login {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
@@ -172,10 +175,13 @@ impl PnlPlant {
         request_receiver: mpsc::Receiver<PnlPlantCommand>,
         subscription_sender: broadcast::Sender<RithmicResponse>,
         account_info: &AccountInfo,
-    ) -> Result<PnlPlant, ()> {
+    ) -> Result<PnlPlant, Error> {
         let config = connection_info::get_config(&account_info.env);
 
-        let (ws_stream, _) = connect_async(&config.url).await.expect("Failed to connect");
+        let ws_stream = connect_with_retry(&config.url, 15)
+            .await
+            .expect("failed to connect to pnl plant");
+
         let (rithmic_sender, rithmic_reader) = ws_stream.split();
 
         let rithmic_sender_api = RithmicSenderApi::new(account_info);
@@ -279,6 +285,20 @@ impl PlantActor for PnlPlant {
                     .await
                     .unwrap();
             }
+            PnlPlantCommand::ListSystemInfo { response_sender } => {
+                let (list_system_info_buf, id) =
+                    self.rithmic_sender_api.request_rithmic_system_info();
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                self.rithmic_sender
+                    .send(Message::Binary(list_system_info_buf.into()))
+                    .await
+                    .unwrap();
+            }
             PnlPlantCommand::Login { response_sender } => {
                 let (login_buf, id) = self.rithmic_sender_api.request_login(
                     &self.config.system_name,
@@ -361,6 +381,22 @@ pub struct RithmicPnlPlantHandle {
 }
 
 impl RithmicPnlPlantHandle {
+    /// Get the list of available systems
+    ///
+    /// # Returns
+    /// The list of systems response or an error message
+    pub async fn list_system_info(&self) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = PnlPlantCommand::ListSystemInfo {
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap().unwrap().remove(0))
+    }
+
     /// Log in to the Rithmic PnL plant
     ///
     /// This must be called before subscribing to any PnL data

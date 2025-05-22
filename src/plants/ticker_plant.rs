@@ -12,7 +12,7 @@ use crate::{
         request_login::SysInfraType,
         request_market_data_update::{Request, UpdateBits},
     },
-    ws::{PlantActor, RithmicStream, get_heartbeat_interval},
+    ws::{PlantActor, RithmicStream, connect_with_retry, get_heartbeat_interval},
 };
 
 use futures_util::{
@@ -21,7 +21,7 @@ use futures_util::{
 };
 
 use tokio_tungstenite::{
-    MaybeTlsStream, connect_async,
+    MaybeTlsStream,
     tungstenite::{Error, Message},
 };
 
@@ -33,6 +33,9 @@ use tokio::{
 
 pub enum TickerPlantCommand {
     Close,
+    ListSystemInfo {
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
     Login {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
@@ -179,7 +182,10 @@ impl TickerPlant {
     ) -> Result<TickerPlant, ()> {
         let config = connection_info::get_config(&account_info.env);
 
-        let (ws_stream, _) = connect_async(&config.url).await.expect("Failed to connect");
+        let ws_stream = connect_with_retry(&config.url, 15)
+            .await
+            .expect("failed to connect to ticker plant");
+
         let (rithmic_sender, rithmic_reader) = ws_stream.split();
 
         let rithmic_sender_api = RithmicSenderApi::new(account_info);
@@ -285,6 +291,20 @@ impl PlantActor for TickerPlant {
                     .await
                     .unwrap();
             }
+            TickerPlantCommand::ListSystemInfo { response_sender } => {
+                let (list_system_info_buf, id) =
+                    self.rithmic_sender_api.request_rithmic_system_info();
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                self.rithmic_sender
+                    .send(Message::Binary(list_system_info_buf.into()))
+                    .await
+                    .unwrap();
+            }
             TickerPlantCommand::Login { response_sender } => {
                 let (login_buf, id) = self.rithmic_sender_api.request_login(
                     &self.config.system_name,
@@ -366,6 +386,19 @@ pub struct RithmicTickerPlantHandle {
 }
 
 impl RithmicTickerPlantHandle {
+    pub async fn list_system_info(&self) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = TickerPlantCommand::ListSystemInfo {
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+        let response = rx.await.unwrap().unwrap().remove(0);
+
+        Ok(response)
+    }
+
     /// Log in to the Rithmic ticker plant
     ///
     /// This must be called before subscribing to any market data

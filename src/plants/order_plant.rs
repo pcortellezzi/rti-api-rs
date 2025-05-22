@@ -1,6 +1,11 @@
 use async_trait::async_trait;
 use tracing::{Level, event};
 
+use tokio_tungstenite::{
+    MaybeTlsStream,
+    tungstenite::{Error, Message},
+};
+
 use crate::{
     api::{
         receiver_api::{RithmicReceiverApi, RithmicResponse},
@@ -10,7 +15,7 @@ use crate::{
     connection_info::{self, AccountInfo},
     request_handler::{RithmicRequest, RithmicRequestHandler},
     rti::request_login::SysInfraType,
-    ws::{PlantActor, RithmicStream, get_heartbeat_interval},
+    ws::{PlantActor, RithmicStream, connect_with_retry, get_heartbeat_interval},
 };
 
 use futures_util::{
@@ -18,19 +23,18 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
 };
 
-use tokio_tungstenite::{
-    MaybeTlsStream, connect_async,
-    tungstenite::{Error, Message},
-};
-
 use tokio::{
     net::TcpStream,
     sync::{broadcast, mpsc, oneshot},
+    task::JoinHandle,
     time::Interval,
 };
 
 pub enum OrderPlantCommand {
     Close,
+    ListSystemInfo {
+        response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
+    },
     Login {
         response_sender: oneshot::Sender<Result<Vec<RithmicResponse>, String>>,
     },
@@ -159,7 +163,7 @@ pub enum OrderPlantCommand {
 /// }
 /// ```
 pub struct RithmicOrderPlant {
-    pub connection_handle: tokio::task::JoinHandle<()>,
+    pub connection_handle: JoinHandle<()>,
     sender: mpsc::Sender<OrderPlantCommand>,
     subscription_sender: broadcast::Sender<RithmicResponse>,
 }
@@ -227,7 +231,10 @@ impl OrderPlant {
     ) -> Result<OrderPlant, String> {
         let config = connection_info::get_config(&account_info.env);
 
-        let (ws_stream, _) = connect_async(&config.url).await.expect("Failed to connect");
+        let ws_stream = connect_with_retry(&config.url, 15)
+            .await
+            .expect("failed to connect to order plant");
+
         let (rithmic_sender, rithmic_reader) = ws_stream.split();
 
         let rithmic_sender_api = RithmicSenderApi::new(account_info);
@@ -327,6 +334,20 @@ impl PlantActor for OrderPlant {
             OrderPlantCommand::Close => {
                 self.rithmic_sender
                     .send(Message::Close(None))
+                    .await
+                    .unwrap();
+            }
+            OrderPlantCommand::ListSystemInfo { response_sender } => {
+                let (list_system_info_buf, id) =
+                    self.rithmic_sender_api.request_rithmic_system_info();
+
+                self.request_handler.register_request(RithmicRequest {
+                    request_id: id,
+                    responder: response_sender,
+                });
+
+                self.rithmic_sender
+                    .send(Message::Binary(list_system_info_buf.into()))
                     .await
                     .unwrap();
             }
@@ -534,6 +555,22 @@ pub struct RithmicOrderPlantHandle {
 }
 
 impl RithmicOrderPlantHandle {
+    /// Get the list of available systems
+    ///
+    /// # Returns
+    /// The list of systems response or an error message
+    pub async fn list_system_info(&self) -> Result<RithmicResponse, String> {
+        let (tx, rx) = oneshot::channel::<Result<Vec<RithmicResponse>, String>>();
+
+        let command = OrderPlantCommand::ListSystemInfo {
+            response_sender: tx,
+        };
+
+        let _ = self.sender.send(command).await;
+
+        Ok(rx.await.unwrap().unwrap().remove(0))
+    }
+
     /// Log in to the Rithmic Order plant
     ///
     /// This must be called before sending orders or subscriptions

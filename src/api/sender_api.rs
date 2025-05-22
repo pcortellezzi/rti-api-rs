@@ -3,18 +3,18 @@ use prost::Message;
 use crate::{
     connection_info::{AccountInfo, RithmicConnectionSystem},
     rti::{
-        request_account_list::UserType,
-        request_bracket_order,
-        request_login::SysInfraType,
-        request_market_data_update::{Request, UpdateBits},
-        request_new_order, request_pn_l_position_updates,
-        request_tick_bar_replay::{BarSubType, BarType, Direction, TimeOrder},
         RequestAccountList, RequestBracketOrder, RequestCancelOrder, RequestExitPosition,
         RequestHeartbeat, RequestLogin, RequestLogout, RequestMarketDataUpdate, RequestModifyOrder,
         RequestNewOrder, RequestPnLPositionSnapshot, RequestPnLPositionUpdates,
         RequestRithmicSystemInfo, RequestShowBracketStops, RequestShowBrackets, RequestShowOrders,
         RequestSubscribeForOrderUpdates, RequestSubscribeToBracketUpdates, RequestTickBarReplay,
         RequestUpdateStopBracketLevel, RequestUpdateTargetBracketLevel,
+        request_account_list::UserType,
+        request_bracket_order,
+        request_login::SysInfraType,
+        request_market_data_update::{Request, UpdateBits},
+        request_new_order, request_pn_l_position_updates,
+        request_tick_bar_replay::{BarSubType, BarType, Direction, TimeOrder},
     },
 };
 
@@ -83,7 +83,7 @@ impl RithmicSenderApi {
 
         let req = RequestLogin {
             template_id: 10,
-            template_version: Some("5.22".into()),
+            template_version: Some("5.31".into()),
             user: Some(user.to_string()),
             password: Some(password.to_string()),
             app_name: Some("pede:pts".to_string()),
@@ -191,6 +191,7 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    #[allow(dead_code)]
     pub fn request_new_order(
         &mut self,
         exchange: &str,
@@ -333,6 +334,7 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    #[allow(dead_code)]
     pub fn request_exit_position(&mut self, symbol: &str, exchange: &str) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -393,6 +395,7 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    #[allow(dead_code)]
     pub fn request_show_brackets(&mut self) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -407,6 +410,7 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    #[allow(dead_code)]
     pub fn request_show_bracket_stops(&mut self) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
