@@ -9,6 +9,22 @@ Not all functionality has been implemented, but this is currently being used to 
 
 Only `order_plant`, `ticker_plant`, `pnl_plant`, `history_plant` are provided. Each plant uses the actor pattern so you'll want to start a plant, and communicate / call commands with it using it's handle. The crate is setup to be used with tokio channels.
 
+## Installation
+
+You can install it from crates.io
+
+```
+$ cargo add rithmic-rs
+```
+
+Or manually add it to your `Cargo.toml` file.
+
+
+```
+[dependencies]
+rithmic-rs = "0.3.4"
+```
+
 ## Usage
 
 Store your credentials in a `.env` file.
