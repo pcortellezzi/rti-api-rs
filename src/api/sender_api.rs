@@ -266,10 +266,10 @@ impl RithmicSenderApi {
             manual_or_auto: Some(2),
             duration: Some(bracket_order.duration),
             bracket_type: Some(6),
-            target_quantity: Some(bracket_order.qty),
-            stop_quantity: Some(bracket_order.qty),
-            target_ticks: Some(bracket_order.profit_ticks),
-            stop_ticks: Some(bracket_order.stop_ticks),
+            target_quantity: vec![bracket_order.qty],
+            stop_quantity: vec![bracket_order.qty],
+            target_ticks: vec![bracket_order.profit_ticks],
+            stop_ticks: vec![bracket_order.stop_ticks],
             price: if bracket_order.ordertype != request_bracket_order::PriceType::Market as i32 {
                 bracket_order.price
             } else {

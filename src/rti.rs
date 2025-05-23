@@ -67,11 +67,11 @@ pub mod request_login {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                SysInfraType::TickerPlant => "TICKER_PLANT",
-                SysInfraType::OrderPlant => "ORDER_PLANT",
-                SysInfraType::HistoryPlant => "HISTORY_PLANT",
-                SysInfraType::PnlPlant => "PNL_PLANT",
-                SysInfraType::RepositoryPlant => "REPOSITORY_PLANT",
+                Self::TickerPlant => "TICKER_PLANT",
+                Self::OrderPlant => "ORDER_PLANT",
+                Self::HistoryPlant => "HISTORY_PLANT",
+                Self::PnlPlant => "PNL_PLANT",
+                Self::RepositoryPlant => "REPOSITORY_PLANT",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -87,7 +87,6 @@ pub mod request_login {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseLogin {
     #[prost(int32, required, tag = "154467")]
@@ -112,7 +111,6 @@ pub struct ResponseLogin {
     pub heartbeat_interval: ::core::option::Option<f64>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestLogout {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -123,7 +121,6 @@ pub struct RequestLogout {
     pub user_msg: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseLogout {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -136,7 +133,6 @@ pub struct ResponseLogout {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestReferenceData {
     #[prost(int32, required, tag = "154467")]
@@ -150,7 +146,6 @@ pub struct RequestReferenceData {
 }
 /// presence bits defined here is also referred in response_get_instrument_by_underlying.proto and response_search_symbols.proto
 /// make sure both these proto files are always same.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseReferenceData {
     #[prost(int32, required, tag = "154467")]
@@ -254,26 +249,26 @@ pub mod response_reference_data {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::ExchangeSymbol => "EXCHANGE_SYMBOL",
-                PresenceBits::SymbolName => "SYMBOL_NAME",
-                PresenceBits::ProductCode => "PRODUCT_CODE",
-                PresenceBits::InstrumentType => "INSTRUMENT_TYPE",
-                PresenceBits::UnderlyingSymbol => "UNDERLYING_SYMBOL",
-                PresenceBits::ExpirationDate => "EXPIRATION_DATE",
-                PresenceBits::Currency => "CURRENCY",
-                PresenceBits::PutCallIndicator => "PUT_CALL_INDICATOR",
-                PresenceBits::StrikePrice => "STRIKE_PRICE",
-                PresenceBits::FpriceToQprice => "FPRICE_TO_QPRICE",
-                PresenceBits::QpriceToFprice => "QPRICE_TO_FPRICE",
-                PresenceBits::MinQpriceChange => "MIN_QPRICE_CHANGE",
-                PresenceBits::MinFrpiceChange => "MIN_FRPICE_CHANGE",
-                PresenceBits::SinglePointValue => "SINGLE_POINT_VALUE",
-                PresenceBits::TickSizeType => "TICK_SIZE_TYPE",
-                PresenceBits::PriceDisplayFormat => "PRICE_DISPLAY_FORMAT",
-                PresenceBits::IsTradable => "IS_TRADABLE",
-                PresenceBits::TradingSymbol => "TRADING_SYMBOL",
-                PresenceBits::TradingExchange => "TRADING_EXCHANGE",
-                PresenceBits::IsUnderlyingForBinaryContracts => {
+                Self::ExchangeSymbol => "EXCHANGE_SYMBOL",
+                Self::SymbolName => "SYMBOL_NAME",
+                Self::ProductCode => "PRODUCT_CODE",
+                Self::InstrumentType => "INSTRUMENT_TYPE",
+                Self::UnderlyingSymbol => "UNDERLYING_SYMBOL",
+                Self::ExpirationDate => "EXPIRATION_DATE",
+                Self::Currency => "CURRENCY",
+                Self::PutCallIndicator => "PUT_CALL_INDICATOR",
+                Self::StrikePrice => "STRIKE_PRICE",
+                Self::FpriceToQprice => "FPRICE_TO_QPRICE",
+                Self::QpriceToFprice => "QPRICE_TO_FPRICE",
+                Self::MinQpriceChange => "MIN_QPRICE_CHANGE",
+                Self::MinFrpiceChange => "MIN_FRPICE_CHANGE",
+                Self::SinglePointValue => "SINGLE_POINT_VALUE",
+                Self::TickSizeType => "TICK_SIZE_TYPE",
+                Self::PriceDisplayFormat => "PRICE_DISPLAY_FORMAT",
+                Self::IsTradable => "IS_TRADABLE",
+                Self::TradingSymbol => "TRADING_SYMBOL",
+                Self::TradingExchange => "TRADING_EXCHANGE",
+                Self::IsUnderlyingForBinaryContracts => {
                     "IS_UNDERLYING_FOR_BINARY_CONTRACTS"
                 }
             }
@@ -308,7 +303,6 @@ pub mod response_reference_data {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestRithmicSystemInfo {
     #[prost(int32, required, tag = "154467")]
@@ -316,7 +310,6 @@ pub struct RequestRithmicSystemInfo {
     #[prost(string, repeated, tag = "132760")]
     pub user_msg: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseRithmicSystemInfo {
     #[prost(int32, required, tag = "154467")]
@@ -330,7 +323,6 @@ pub struct ResponseRithmicSystemInfo {
     #[prost(bool, repeated, packed = "false", tag = "153649")]
     pub has_aggregated_quotes: ::prost::alloc::vec::Vec<bool>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestRithmicSystemGatewayInfo {
     #[prost(int32, required, tag = "154467")]
@@ -340,7 +332,6 @@ pub struct RequestRithmicSystemGatewayInfo {
     #[prost(string, optional, tag = "153628")]
     pub system_name: ::core::option::Option<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseRithmicSystemGatewayInfo {
     #[prost(int32, required, tag = "154467")]
@@ -357,7 +348,6 @@ pub struct ResponseRithmicSystemGatewayInfo {
     pub gateway_uri: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestHeartbeat {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -374,7 +364,6 @@ pub struct RequestHeartbeat {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseHeartbeat {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -394,7 +383,6 @@ pub struct ResponseHeartbeat {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Reject {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -408,48 +396,34 @@ pub struct Reject {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ForcedLogout {
     /// PB_OFFSET + MNM_TEMPLATE_ID
     #[prost(int32, required, tag = "154467")]
     pub template_id: i32,
 }
-/// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserAccountUpdate {
-    /// PB_OFFSET + MNM_TEMPLATE_ID
     #[prost(int32, required, tag = "154467")]
     pub template_id: i32,
-    /// PB_OFFSET + MNM_REQUEST_TYPE
     #[prost(enumeration = "user_account_update::UpdateType", optional, tag = "154288")]
     pub update_type: ::core::option::Option<i32>,
-    /// PB_OFFSET + MNM_ACCOUNT_ACCESS_TYPE
     #[prost(enumeration = "user_account_update::AccessType", optional, tag = "154000")]
     pub access_type: ::core::option::Option<i32>,
-    /// PB_OFFSET + MNM_SOURCE_USER_ID
     #[prost(string, optional, tag = "154247")]
     pub source_user_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// PB_OFFSET + MNM_USER
     #[prost(string, optional, tag = "131003")]
     pub user: ::core::option::Option<::prost::alloc::string::String>,
-    /// PB_OFFSET + MNM_FCM_ID
     #[prost(string, optional, tag = "154013")]
     pub fcm_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// PB_OFFSET + MNM_IB_ID
     #[prost(string, optional, tag = "154014")]
     pub ib_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// PB_OFFSET + MNM_ACCOUNT_ID
     #[prost(string, optional, tag = "154008")]
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// PB_OFFSET + MNM_ACCOUNT_NAME
     #[prost(string, optional, tag = "154002")]
     pub account_name: ::core::option::Option<::prost::alloc::string::String>,
-    /// PB_OFFSET + MNM_SECONDS_SINCE_BOE
     #[prost(int32, optional, tag = "150100")]
     pub ssboe: ::core::option::Option<i32>,
-    /// PB_OFFSET + MNM_USECS
     #[prost(int32, optional, tag = "150101")]
     pub usecs: ::core::option::Option<i32>,
 }
@@ -478,8 +452,8 @@ pub mod user_account_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UpdateType::Add => "ADD",
-                UpdateType::Remove => "REMOVE",
+                Self::Add => "ADD",
+                Self::Remove => "REMOVE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -514,8 +488,8 @@ pub mod user_account_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                AccessType::ReadOnly => "READ_ONLY",
-                AccessType::ReadWrite => "READ_WRITE",
+                Self::ReadOnly => "READ_ONLY",
+                Self::ReadWrite => "READ_WRITE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -530,7 +504,6 @@ pub mod user_account_update {
 }
 /// update bits and Request enum defined here is also referred in request_subscribe_by_underlying.proto
 /// make sure both these proto files are always same.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestMarketDataUpdate {
     #[prost(int32, required, tag = "154467")]
@@ -591,23 +564,23 @@ pub mod request_market_data_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UpdateBits::LastTrade => "LAST_TRADE",
-                UpdateBits::Bbo => "BBO",
-                UpdateBits::OrderBook => "ORDER_BOOK",
-                UpdateBits::Open => "OPEN",
-                UpdateBits::OpeningIndicator => "OPENING_INDICATOR",
-                UpdateBits::HighLow => "HIGH_LOW",
-                UpdateBits::HighBidLowAsk => "HIGH_BID_LOW_ASK",
-                UpdateBits::Close => "CLOSE",
-                UpdateBits::ClosingIndicator => "CLOSING_INDICATOR",
-                UpdateBits::Settlement => "SETTLEMENT",
-                UpdateBits::MarketMode => "MARKET_MODE",
-                UpdateBits::OpenInterest => "OPEN_INTEREST",
-                UpdateBits::MarginRate => "MARGIN_RATE",
-                UpdateBits::HighPriceLimit => "HIGH_PRICE_LIMIT",
-                UpdateBits::LowPriceLimit => "LOW_PRICE_LIMIT",
-                UpdateBits::ProjectedSettlement => "PROJECTED_SETTLEMENT",
-                UpdateBits::AdjustedClose => "ADJUSTED_CLOSE",
+                Self::LastTrade => "LAST_TRADE",
+                Self::Bbo => "BBO",
+                Self::OrderBook => "ORDER_BOOK",
+                Self::Open => "OPEN",
+                Self::OpeningIndicator => "OPENING_INDICATOR",
+                Self::HighLow => "HIGH_LOW",
+                Self::HighBidLowAsk => "HIGH_BID_LOW_ASK",
+                Self::Close => "CLOSE",
+                Self::ClosingIndicator => "CLOSING_INDICATOR",
+                Self::Settlement => "SETTLEMENT",
+                Self::MarketMode => "MARKET_MODE",
+                Self::OpenInterest => "OPEN_INTEREST",
+                Self::MarginRate => "MARGIN_RATE",
+                Self::HighPriceLimit => "HIGH_PRICE_LIMIT",
+                Self::LowPriceLimit => "LOW_PRICE_LIMIT",
+                Self::ProjectedSettlement => "PROJECTED_SETTLEMENT",
+                Self::AdjustedClose => "ADJUSTED_CLOSE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -657,8 +630,8 @@ pub mod request_market_data_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Request::Subscribe => "SUBSCRIBE",
-                Request::Unsubscribe => "UNSUBSCRIBE",
+                Self::Subscribe => "SUBSCRIBE",
+                Self::Unsubscribe => "UNSUBSCRIBE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -671,7 +644,6 @@ pub mod request_market_data_update {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseMarketDataUpdate {
     #[prost(int32, required, tag = "154467")]
@@ -682,7 +654,6 @@ pub struct ResponseMarketDataUpdate {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestAuxilliaryReferenceData {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -700,7 +671,6 @@ pub struct RequestAuxilliaryReferenceData {
 }
 /// presence bits defined here is also referred in response_get_instrument_by_underlying.proto and response_search_symbols.proto
 /// make sure both these proto files are always same.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseAuxilliaryReferenceData {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -793,17 +763,17 @@ pub mod response_auxilliary_reference_data {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::SettlementMethod => "SETTLEMENT_METHOD",
-                PresenceBits::FirstNoticeDate => "FIRST_NOTICE_DATE",
-                PresenceBits::LastNoticeDate => "LAST_NOTICE_DATE",
-                PresenceBits::FirstTradingDate => "FIRST_TRADING_DATE",
-                PresenceBits::LastTradingDate => "LAST_TRADING_DATE",
-                PresenceBits::FirstDeliveryDate => "FIRST_DELIVERY_DATE",
-                PresenceBits::LastDeliveryDate => "LAST_DELIVERY_DATE",
-                PresenceBits::FirstPositionDate => "FIRST_POSITION_DATE",
-                PresenceBits::LastPositionDate => "LAST_POSITION_DATE",
-                PresenceBits::UnitOfMeasure => "UNIT_OF_MEASURE",
-                PresenceBits::UnitOfMeasureQty => "UNIT_OF_MEASURE_QTY",
+                Self::SettlementMethod => "SETTLEMENT_METHOD",
+                Self::FirstNoticeDate => "FIRST_NOTICE_DATE",
+                Self::LastNoticeDate => "LAST_NOTICE_DATE",
+                Self::FirstTradingDate => "FIRST_TRADING_DATE",
+                Self::LastTradingDate => "LAST_TRADING_DATE",
+                Self::FirstDeliveryDate => "FIRST_DELIVERY_DATE",
+                Self::LastDeliveryDate => "LAST_DELIVERY_DATE",
+                Self::FirstPositionDate => "FIRST_POSITION_DATE",
+                Self::LastPositionDate => "LAST_POSITION_DATE",
+                Self::UnitOfMeasure => "UNIT_OF_MEASURE",
+                Self::UnitOfMeasureQty => "UNIT_OF_MEASURE_QTY",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -826,7 +796,6 @@ pub mod response_auxilliary_reference_data {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestGiveTickSizeTypeTable {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -840,7 +809,6 @@ pub struct RequestGiveTickSizeTypeTable {
     pub tick_size_type: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseGiveTickSizeTypeTable {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -905,10 +873,10 @@ pub mod response_give_tick_size_type_table {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::TickSizeFirstPrice => "TICK_SIZE_FIRST_PRICE",
-                PresenceBits::TickSizeLastPrice => "TICK_SIZE_LAST_PRICE",
-                PresenceBits::TickSizeFpOperator => "TICK_SIZE_FP_OPERATOR",
-                PresenceBits::TickSizeLpOperator => "TICK_SIZE_LP_OPERATOR",
+                Self::TickSizeFirstPrice => "TICK_SIZE_FIRST_PRICE",
+                Self::TickSizeLastPrice => "TICK_SIZE_LAST_PRICE",
+                Self::TickSizeFpOperator => "TICK_SIZE_FP_OPERATOR",
+                Self::TickSizeLpOperator => "TICK_SIZE_LP_OPERATOR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -924,7 +892,6 @@ pub mod response_give_tick_size_type_table {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestGetInstrumentByUnderlying {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -945,7 +912,6 @@ pub struct RequestGetInstrumentByUnderlying {
 }
 /// presence bits field defined here is an exact copy of response_reference_data.proto
 /// Make sure they are always the same in both proto files.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseGetInstrumentByUnderlying {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1061,22 +1027,22 @@ pub mod response_get_instrument_by_underlying {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::ExchangeSymbol => "EXCHANGE_SYMBOL",
-                PresenceBits::SymbolName => "SYMBOL_NAME",
-                PresenceBits::ProductCode => "PRODUCT_CODE",
-                PresenceBits::InstrumentType => "INSTRUMENT_TYPE",
-                PresenceBits::UnderlyingSymbol => "UNDERLYING_SYMBOL",
-                PresenceBits::ExpirationDate => "EXPIRATION_DATE",
-                PresenceBits::Currency => "CURRENCY",
-                PresenceBits::PutCallIndicator => "PUT_CALL_INDICATOR",
-                PresenceBits::StrikePrice => "STRIKE_PRICE",
-                PresenceBits::FpriceToQprice => "FPRICE_TO_QPRICE",
-                PresenceBits::QpriceToFprice => "QPRICE_TO_FPRICE",
-                PresenceBits::MinQpriceChange => "MIN_QPRICE_CHANGE",
-                PresenceBits::MinFrpiceChange => "MIN_FRPICE_CHANGE",
-                PresenceBits::SinglePointValue => "SINGLE_POINT_VALUE",
-                PresenceBits::TickSizeType => "TICK_SIZE_TYPE",
-                PresenceBits::PriceDisplayFormat => "PRICE_DISPLAY_FORMAT",
+                Self::ExchangeSymbol => "EXCHANGE_SYMBOL",
+                Self::SymbolName => "SYMBOL_NAME",
+                Self::ProductCode => "PRODUCT_CODE",
+                Self::InstrumentType => "INSTRUMENT_TYPE",
+                Self::UnderlyingSymbol => "UNDERLYING_SYMBOL",
+                Self::ExpirationDate => "EXPIRATION_DATE",
+                Self::Currency => "CURRENCY",
+                Self::PutCallIndicator => "PUT_CALL_INDICATOR",
+                Self::StrikePrice => "STRIKE_PRICE",
+                Self::FpriceToQprice => "FPRICE_TO_QPRICE",
+                Self::QpriceToFprice => "QPRICE_TO_FPRICE",
+                Self::MinQpriceChange => "MIN_QPRICE_CHANGE",
+                Self::MinFrpiceChange => "MIN_FRPICE_CHANGE",
+                Self::SinglePointValue => "SINGLE_POINT_VALUE",
+                Self::TickSizeType => "TICK_SIZE_TYPE",
+                Self::PriceDisplayFormat => "PRICE_DISPLAY_FORMAT",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1104,7 +1070,6 @@ pub mod response_get_instrument_by_underlying {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseGetInstrumentByUnderlyingKeys {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1128,7 +1093,6 @@ pub struct ResponseGetInstrumentByUnderlyingKeys {
 }
 /// update bits and Request enum field defined here is an exact copy of request_market_data_update.proto
 /// Make sure they are always the same in both proto files.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestMarketDataUpdateByUnderlying {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1196,22 +1160,22 @@ pub mod request_market_data_update_by_underlying {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UpdateBits::LastTrade => "LAST_TRADE",
-                UpdateBits::Bbo => "BBO",
-                UpdateBits::OrderBook => "ORDER_BOOK",
-                UpdateBits::Open => "OPEN",
-                UpdateBits::OpeningIndicator => "OPENING_INDICATOR",
-                UpdateBits::HighLow => "HIGH_LOW",
-                UpdateBits::HighBidLowAsk => "HIGH_BID_LOW_ASK",
-                UpdateBits::Close => "CLOSE",
-                UpdateBits::ClosingIndicator => "CLOSING_INDICATOR",
-                UpdateBits::Settlement => "SETTLEMENT",
-                UpdateBits::MarketMode => "MARKET_MODE",
-                UpdateBits::OpenInterest => "OPEN_INTEREST",
-                UpdateBits::MarginRate => "MARGIN_RATE",
-                UpdateBits::HighPriceLimit => "HIGH_PRICE_LIMIT",
-                UpdateBits::LowPriceLimit => "LOW_PRICE_LIMIT",
-                UpdateBits::ProjectedSettlement => "PROJECTED_SETTLEMENT",
+                Self::LastTrade => "LAST_TRADE",
+                Self::Bbo => "BBO",
+                Self::OrderBook => "ORDER_BOOK",
+                Self::Open => "OPEN",
+                Self::OpeningIndicator => "OPENING_INDICATOR",
+                Self::HighLow => "HIGH_LOW",
+                Self::HighBidLowAsk => "HIGH_BID_LOW_ASK",
+                Self::Close => "CLOSE",
+                Self::ClosingIndicator => "CLOSING_INDICATOR",
+                Self::Settlement => "SETTLEMENT",
+                Self::MarketMode => "MARKET_MODE",
+                Self::OpenInterest => "OPEN_INTEREST",
+                Self::MarginRate => "MARGIN_RATE",
+                Self::HighPriceLimit => "HIGH_PRICE_LIMIT",
+                Self::LowPriceLimit => "LOW_PRICE_LIMIT",
+                Self::ProjectedSettlement => "PROJECTED_SETTLEMENT",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1260,8 +1224,8 @@ pub mod request_market_data_update_by_underlying {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Request::Subscribe => "SUBSCRIBE",
-                Request::Unsubscribe => "UNSUBSCRIBE",
+                Self::Subscribe => "SUBSCRIBE",
+                Self::Unsubscribe => "UNSUBSCRIBE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1275,7 +1239,6 @@ pub mod request_market_data_update_by_underlying {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseMarketDataUpdateByUnderlying {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1289,7 +1252,6 @@ pub struct ResponseMarketDataUpdateByUnderlying {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestSearchSymbols {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1343,8 +1305,8 @@ pub mod request_search_symbols {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Pattern::Equals => "EQUALS",
-                Pattern::Contains => "CONTAINS",
+                Self::Equals => "EQUALS",
+                Self::Contains => "CONTAINS",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1387,16 +1349,16 @@ pub mod request_search_symbols {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                InstrumentType::Future => "FUTURE",
-                InstrumentType::FutureOption => "FUTURE_OPTION",
-                InstrumentType::FutureStrategy => "FUTURE_STRATEGY",
-                InstrumentType::Equity => "EQUITY",
-                InstrumentType::EquityOption => "EQUITY_OPTION",
-                InstrumentType::EquityStrategy => "EQUITY_STRATEGY",
-                InstrumentType::Index => "INDEX",
-                InstrumentType::IndexOption => "INDEX_OPTION",
-                InstrumentType::Spread => "SPREAD",
-                InstrumentType::Synthetic => "SYNTHETIC",
+                Self::Future => "FUTURE",
+                Self::FutureOption => "FUTURE_OPTION",
+                Self::FutureStrategy => "FUTURE_STRATEGY",
+                Self::Equity => "EQUITY",
+                Self::EquityOption => "EQUITY_OPTION",
+                Self::EquityStrategy => "EQUITY_STRATEGY",
+                Self::Index => "INDEX",
+                Self::IndexOption => "INDEX_OPTION",
+                Self::Spread => "SPREAD",
+                Self::Synthetic => "SYNTHETIC",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1418,7 +1380,6 @@ pub mod request_search_symbols {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseSearchSymbols {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1453,7 +1414,6 @@ pub struct ResponseSearchSymbols {
     pub expiration_date: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestProductCodes {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1470,7 +1430,6 @@ pub struct RequestProductCodes {
     pub give_toi_products_only: ::core::option::Option<bool>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseProductCodes {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1507,7 +1466,6 @@ pub struct ResponseProductCodes {
     pub end_time_of_interest_msm: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestFrontMonthContract {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1527,7 +1485,6 @@ pub struct RequestFrontMonthContract {
     pub need_updates: ::core::option::Option<bool>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseFrontMonthContract {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1559,7 +1516,6 @@ pub struct ResponseFrontMonthContract {
     pub trading_exchange: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestDepthByOrderSnapshot {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1579,7 +1535,6 @@ pub struct RequestDepthByOrderSnapshot {
     pub depth_price: ::core::option::Option<f64>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseDepthByOrderSnapshot {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1648,8 +1603,8 @@ pub mod response_depth_by_order_snapshot {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1663,7 +1618,6 @@ pub mod response_depth_by_order_snapshot {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestDepthByOrderUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1714,8 +1668,8 @@ pub mod request_depth_by_order_updates {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Request::Subscribe => "SUBSCRIBE",
-                Request::Unsubscribe => "UNSUBSCRIBE",
+                Self::Subscribe => "SUBSCRIBE",
+                Self::Unsubscribe => "UNSUBSCRIBE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1729,7 +1683,6 @@ pub mod request_depth_by_order_updates {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseDepthByOrderUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1743,7 +1696,6 @@ pub struct ResponseDepthByOrderUpdates {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestGetVolumeAtPrice {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1760,7 +1712,6 @@ pub struct RequestGetVolumeAtPrice {
     pub exchange: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseGetVolumeAtPrice {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1795,7 +1746,6 @@ pub struct ResponseGetVolumeAtPrice {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BestBidOffer {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1881,9 +1831,9 @@ pub mod best_bid_offer {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::Bid => "BID",
-                PresenceBits::Ask => "ASK",
-                PresenceBits::LeanPrice => "LEAN_PRICE",
+                Self::Bid => "BID",
+                Self::Ask => "ASK",
+                Self::LeanPrice => "LEAN_PRICE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1898,7 +1848,6 @@ pub mod best_bid_offer {
     }
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OrderBook {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -1973,8 +1922,8 @@ pub mod order_book {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::Bid => "BID",
-                PresenceBits::Ask => "ASK",
+                Self::Bid => "BID",
+                Self::Ask => "ASK",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2014,13 +1963,13 @@ pub mod order_book {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UpdateType::ClearOrderBook => "CLEAR_ORDER_BOOK",
-                UpdateType::NoBook => "NO_BOOK",
-                UpdateType::SnapshotImage => "SNAPSHOT_IMAGE",
-                UpdateType::Begin => "BEGIN",
-                UpdateType::Middle => "MIDDLE",
-                UpdateType::End => "END",
-                UpdateType::Solo => "SOLO",
+                Self::ClearOrderBook => "CLEAR_ORDER_BOOK",
+                Self::NoBook => "NO_BOOK",
+                Self::SnapshotImage => "SNAPSHOT_IMAGE",
+                Self::Begin => "BEGIN",
+                Self::Middle => "MIDDLE",
+                Self::End => "END",
+                Self::Solo => "SOLO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2039,7 +1988,6 @@ pub mod order_book {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LastTrade {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2142,11 +2090,11 @@ pub mod last_trade {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::LastTrade => "LAST_TRADE",
-                PresenceBits::NetChange => "NET_CHANGE",
-                PresenceBits::PrecentChange => "PRECENT_CHANGE",
-                PresenceBits::Volume => "VOLUME",
-                PresenceBits::Vwap => "VWAP",
+                Self::LastTrade => "LAST_TRADE",
+                Self::NetChange => "NET_CHANGE",
+                Self::PrecentChange => "PRECENT_CHANGE",
+                Self::Volume => "VOLUME",
+                Self::Vwap => "VWAP",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2184,8 +2132,8 @@ pub mod last_trade {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2199,7 +2147,6 @@ pub mod last_trade {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TradeStatistics {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2278,9 +2225,9 @@ pub mod trade_statistics {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::Open => "OPEN",
-                PresenceBits::High => "HIGH",
-                PresenceBits::Low => "LOW",
+                Self::Open => "OPEN",
+                Self::High => "HIGH",
+                Self::Low => "LOW",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2295,7 +2242,6 @@ pub mod trade_statistics {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QuoteStatistics {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2355,8 +2301,8 @@ pub mod quote_statistics {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::HighestBid => "HIGHEST_BID",
-                PresenceBits::LowestAsk => "LOWEST_ASK",
+                Self::HighestBid => "HIGHEST_BID",
+                Self::LowestAsk => "LOWEST_ASK",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2370,7 +2316,6 @@ pub mod quote_statistics {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndicatorPrices {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2430,8 +2375,8 @@ pub mod indicator_prices {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::OpeningIndicator => "OPENING_INDICATOR",
-                PresenceBits::ClosingIndicator => "CLOSING_INDICATOR",
+                Self::OpeningIndicator => "OPENING_INDICATOR",
+                Self::ClosingIndicator => "CLOSING_INDICATOR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2445,7 +2390,6 @@ pub mod indicator_prices {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OpenInterest {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2473,7 +2417,6 @@ pub struct OpenInterest {
     #[prost(int32, optional, tag = "150101")]
     pub usecs: ::core::option::Option<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EndOfDayPrices {
     #[prost(int32, required, tag = "154467")]
@@ -2535,10 +2478,10 @@ pub mod end_of_day_prices {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::Close => "CLOSE",
-                PresenceBits::Settlement => "SETTLEMENT",
-                PresenceBits::ProjectedSettlement => "PROJECTED_SETTLEMENT",
-                PresenceBits::AdjustedClose => "ADJUSTED_CLOSE",
+                Self::Close => "CLOSE",
+                Self::Settlement => "SETTLEMENT",
+                Self::ProjectedSettlement => "PROJECTED_SETTLEMENT",
+                Self::AdjustedClose => "ADJUSTED_CLOSE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2553,7 +2496,6 @@ pub mod end_of_day_prices {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MarketMode {
     #[prost(int32, required, tag = "154467")]
@@ -2574,7 +2516,6 @@ pub struct MarketMode {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FrontMonthContractUpdate {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2600,7 +2541,6 @@ pub struct FrontMonthContractUpdate {
     pub trading_exchange: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DepthByOrder {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2696,8 +2636,8 @@ pub mod depth_by_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2733,9 +2673,9 @@ pub mod depth_by_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UpdateType::New => "NEW",
-                UpdateType::Change => "CHANGE",
-                UpdateType::Delete => "DELETE",
+                Self::New => "NEW",
+                Self::Change => "CHANGE",
+                Self::Delete => "DELETE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2750,7 +2690,6 @@ pub mod depth_by_order {
     }
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DepthByOrderEndEvent {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2773,7 +2712,6 @@ pub struct DepthByOrderEndEvent {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SymbolMarginRate {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2793,7 +2731,6 @@ pub struct SymbolMarginRate {
     pub margin_rate: ::core::option::Option<f64>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OrderPriceLimits {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2853,8 +2790,8 @@ pub mod order_price_limits {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::HighPriceLimit => "HIGH_PRICE_LIMIT",
-                PresenceBits::LowPriceLimit => "LOW_PRICE_LIMIT",
+                Self::HighPriceLimit => "HIGH_PRICE_LIMIT",
+                Self::LowPriceLimit => "LOW_PRICE_LIMIT",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2868,7 +2805,6 @@ pub mod order_price_limits {
     }
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestLoginInfo {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2879,7 +2815,6 @@ pub struct RequestLoginInfo {
     pub user_msg: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseLoginInfo {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2934,10 +2869,10 @@ pub mod response_login_info {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UserType::Admin => "USER_TYPE_ADMIN",
-                UserType::Fcm => "USER_TYPE_FCM",
-                UserType::Ib => "USER_TYPE_IB",
-                UserType::Trader => "USER_TYPE_TRADER",
+                Self::Admin => "USER_TYPE_ADMIN",
+                Self::Fcm => "USER_TYPE_FCM",
+                Self::Ib => "USER_TYPE_IB",
+                Self::Trader => "USER_TYPE_TRADER",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2953,7 +2888,6 @@ pub mod response_login_info {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestAccountList {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -2998,9 +2932,9 @@ pub mod request_account_list {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UserType::Fcm => "USER_TYPE_FCM",
-                UserType::Ib => "USER_TYPE_IB",
-                UserType::Trader => "USER_TYPE_TRADER",
+                Self::Fcm => "USER_TYPE_FCM",
+                Self::Ib => "USER_TYPE_IB",
+                Self::Trader => "USER_TYPE_TRADER",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3014,7 +2948,6 @@ pub mod request_account_list {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseAccountList {
     #[prost(int32, required, tag = "154467")]
@@ -3035,13 +2968,14 @@ pub struct ResponseAccountList {
     pub account_name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "154383")]
     pub account_currency: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, optional, tag = "131035")]
+    pub account_auto_liquidate: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "131040")]
     pub auto_liq_threshold_current_value: ::core::option::Option<
         ::prost::alloc::string::String,
     >,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestAccountRmsInfo {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3090,9 +3024,9 @@ pub mod request_account_rms_info {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UserType::Fcm => "USER_TYPE_FCM",
-                UserType::Ib => "USER_TYPE_IB",
-                UserType::Trader => "USER_TYPE_TRADER",
+                Self::Fcm => "USER_TYPE_FCM",
+                Self::Ib => "USER_TYPE_IB",
+                Self::Trader => "USER_TYPE_TRADER",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3107,7 +3041,6 @@ pub mod request_account_rms_info {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseAccountRmsInfo {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3225,16 +3158,16 @@ pub mod response_account_rms_info {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::BuyLimit => "BUY_LIMIT",
-                PresenceBits::SellLimit => "SELL_LIMIT",
-                PresenceBits::LossLimit => "LOSS_LIMIT",
-                PresenceBits::MaxOrderQuantity => "MAX_ORDER_QUANTITY",
-                PresenceBits::MinAccountBalance => "MIN_ACCOUNT_BALANCE",
-                PresenceBits::MinMarginBalance => "MIN_MARGIN_BALANCE",
-                PresenceBits::Algorithm => "ALGORITHM",
-                PresenceBits::Status => "STATUS",
-                PresenceBits::Currency => "CURRENCY",
-                PresenceBits::DefaultCommission => "DEFAULT_COMMISSION",
+                Self::BuyLimit => "BUY_LIMIT",
+                Self::SellLimit => "SELL_LIMIT",
+                Self::LossLimit => "LOSS_LIMIT",
+                Self::MaxOrderQuantity => "MAX_ORDER_QUANTITY",
+                Self::MinAccountBalance => "MIN_ACCOUNT_BALANCE",
+                Self::MinMarginBalance => "MIN_MARGIN_BALANCE",
+                Self::Algorithm => "ALGORITHM",
+                Self::Status => "STATUS",
+                Self::Currency => "CURRENCY",
+                Self::DefaultCommission => "DEFAULT_COMMISSION",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3277,8 +3210,8 @@ pub mod response_account_rms_info {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                AutoLiquidateFlag::Enabled => "ENABLED",
-                AutoLiquidateFlag::Disabled => "DISABLED",
+                Self::Enabled => "ENABLED",
+                Self::Disabled => "DISABLED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3291,7 +3224,6 @@ pub mod response_account_rms_info {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestAccountRmsUpdates {
     #[prost(int32, required, tag = "154467")]
@@ -3334,9 +3266,7 @@ pub mod request_account_rms_updates {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UpdateBits::AutoLiqThresholdCurrentValue => {
-                    "AUTO_LIQ_THRESHOLD_CURRENT_VALUE"
-                }
+                Self::AutoLiqThresholdCurrentValue => "AUTO_LIQ_THRESHOLD_CURRENT_VALUE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3350,7 +3280,6 @@ pub mod request_account_rms_updates {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseAccountRmsUpdates {
     #[prost(int32, required, tag = "154467")]
@@ -3361,7 +3290,6 @@ pub struct ResponseAccountRmsUpdates {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestProductRmsInfo {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3381,7 +3309,6 @@ pub struct RequestProductRmsInfo {
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseProductRmsInfo {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3414,7 +3341,7 @@ pub struct ResponseProductRmsInfo {
     /// PB_OFFSET + MNM_LOSS_LIMIT
     #[prost(double, optional, tag = "154019")]
     pub loss_limit: ::core::option::Option<f64>,
-    /// PB_OFFSET + MNM_COMMISSION_FILL_RATE
+    /// PB_OFFSET +	MNM_COMMISSION_FILL_RATE
     #[prost(double, optional, tag = "156969")]
     pub commission_fill_rate: ::core::option::Option<f64>,
     /// PB_OFFSET + MNM_BUY_MARGIN_RATE
@@ -3464,13 +3391,13 @@ pub mod response_product_rms_info {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PresenceBits::BuyLimit => "BUY_LIMIT",
-                PresenceBits::SellLimit => "SELL_LIMIT",
-                PresenceBits::LossLimit => "LOSS_LIMIT",
-                PresenceBits::MaxOrderQuantity => "MAX_ORDER_QUANTITY",
-                PresenceBits::BuyMarginRate => "BUY_MARGIN_RATE",
-                PresenceBits::SellMarginRate => "SELL_MARGIN_RATE",
-                PresenceBits::CommissionFillRate => "COMMISSION_FILL_RATE",
+                Self::BuyLimit => "BUY_LIMIT",
+                Self::SellLimit => "SELL_LIMIT",
+                Self::LossLimit => "LOSS_LIMIT",
+                Self::MaxOrderQuantity => "MAX_ORDER_QUANTITY",
+                Self::BuyMarginRate => "BUY_MARGIN_RATE",
+                Self::SellMarginRate => "SELL_MARGIN_RATE",
+                Self::CommissionFillRate => "COMMISSION_FILL_RATE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3489,7 +3416,6 @@ pub mod response_product_rms_info {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestSubscribeForOrderUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3509,7 +3435,6 @@ pub struct RequestSubscribeForOrderUpdates {
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseSubscribeForOrderUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3523,7 +3448,6 @@ pub struct ResponseSubscribeForOrderUpdates {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestTradeRoutes {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3537,7 +3461,6 @@ pub struct RequestTradeRoutes {
     pub subscribe_for_updates: ::core::option::Option<bool>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseTradeRoutes {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3571,7 +3494,6 @@ pub struct ResponseTradeRoutes {
     #[prost(bool, optional, tag = "154689")]
     pub is_default: ::core::option::Option<bool>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestNewOrder {
     #[prost(int32, required, tag = "154467")]
@@ -3612,6 +3534,12 @@ pub struct RequestNewOrder {
     pub trade_route: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(enumeration = "request_new_order::OrderPlacement", optional, tag = "154710")]
     pub manual_or_auto: ::core::option::Option<i32>,
+    #[prost(bool, optional, tag = "157063")]
+    pub trailing_stop: ::core::option::Option<bool>,
+    #[prost(int32, optional, tag = "157064")]
+    pub trail_by_ticks: ::core::option::Option<i32>,
+    #[prost(int32, optional, tag = "157065")]
+    pub trail_by_price_id: ::core::option::Option<i32>,
     #[prost(int32, optional, tag = "154487")]
     pub release_at_ssboe: ::core::option::Option<i32>,
     #[prost(int32, optional, tag = "154549")]
@@ -3658,8 +3586,8 @@ pub mod request_new_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3694,8 +3622,8 @@ pub mod request_new_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3732,10 +3660,10 @@ pub mod request_new_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Duration::Day => "DAY",
-                Duration::Gtc => "GTC",
-                Duration::Ioc => "IOC",
-                Duration::Fok => "FOK",
+                Self::Day => "DAY",
+                Self::Gtc => "GTC",
+                Self::Ioc => "IOC",
+                Self::Fok => "FOK",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3776,12 +3704,12 @@ pub mod request_new_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceType::Limit => "LIMIT",
-                PriceType::Market => "MARKET",
-                PriceType::StopLimit => "STOP_LIMIT",
-                PriceType::StopMarket => "STOP_MARKET",
-                PriceType::MarketIfTouched => "MARKET_IF_TOUCHED",
-                PriceType::LimitIfTouched => "LIMIT_IF_TOUCHED",
+                Self::Limit => "LIMIT",
+                Self::Market => "MARKET",
+                Self::StopLimit => "STOP_LIMIT",
+                Self::StopMarket => "STOP_MARKET",
+                Self::MarketIfTouched => "MARKET_IF_TOUCHED",
+                Self::LimitIfTouched => "LIMIT_IF_TOUCHED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3822,10 +3750,10 @@ pub mod request_new_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceField::BidPrice => "BID_PRICE",
-                PriceField::OfferPrice => "OFFER_PRICE",
-                PriceField::TradePrice => "TRADE_PRICE",
-                PriceField::LeanPrice => "LEAN_PRICE",
+                Self::BidPrice => "BID_PRICE",
+                Self::OfferPrice => "OFFER_PRICE",
+                Self::TradePrice => "TRADE_PRICE",
+                Self::LeanPrice => "LEAN_PRICE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3866,12 +3794,12 @@ pub mod request_new_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Condition::EqualTo => "EQUAL_TO",
-                Condition::NotEqualTo => "NOT_EQUAL_TO",
-                Condition::GreaterThan => "GREATER_THAN",
-                Condition::GreaterThanEqualTo => "GREATER_THAN_EQUAL_TO",
-                Condition::LesserThan => "LESSER_THAN",
-                Condition::LesserThanEqualTo => "LESSER_THAN_EQUAL_TO",
+                Self::EqualTo => "EQUAL_TO",
+                Self::NotEqualTo => "NOT_EQUAL_TO",
+                Self::GreaterThan => "GREATER_THAN",
+                Self::GreaterThanEqualTo => "GREATER_THAN_EQUAL_TO",
+                Self::LesserThan => "LESSER_THAN",
+                Self::LesserThanEqualTo => "LESSER_THAN_EQUAL_TO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3889,7 +3817,6 @@ pub mod request_new_order {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseNewOrder {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -3917,7 +3844,6 @@ pub struct ResponseNewOrder {
     #[prost(int32, optional, tag = "150101")]
     pub usecs: ::core::option::Option<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestModifyOrder {
     #[prost(int32, required, tag = "154467")]
@@ -3952,6 +3878,10 @@ pub struct RequestModifyOrder {
         tag = "154710"
     )]
     pub manual_or_auto: ::core::option::Option<i32>,
+    #[prost(bool, optional, tag = "157063")]
+    pub trailing_stop: ::core::option::Option<bool>,
+    #[prost(int32, optional, tag = "157064")]
+    pub trail_by_ticks: ::core::option::Option<i32>,
     #[prost(string, optional, tag = "154451")]
     pub if_touched_symbol: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "154452")]
@@ -3992,12 +3922,12 @@ pub mod request_modify_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceType::Limit => "LIMIT",
-                PriceType::Market => "MARKET",
-                PriceType::StopLimit => "STOP_LIMIT",
-                PriceType::StopMarket => "STOP_MARKET",
-                PriceType::MarketIfTouched => "MARKET_IF_TOUCHED",
-                PriceType::LimitIfTouched => "LIMIT_IF_TOUCHED",
+                Self::Limit => "LIMIT",
+                Self::Market => "MARKET",
+                Self::StopLimit => "STOP_LIMIT",
+                Self::StopMarket => "STOP_MARKET",
+                Self::MarketIfTouched => "MARKET_IF_TOUCHED",
+                Self::LimitIfTouched => "LIMIT_IF_TOUCHED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4038,10 +3968,10 @@ pub mod request_modify_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceField::BidPrice => "BID_PRICE",
-                PriceField::OfferPrice => "OFFER_PRICE",
-                PriceField::TradePrice => "TRADE_PRICE",
-                PriceField::LeanPrice => "LEAN_PRICE",
+                Self::BidPrice => "BID_PRICE",
+                Self::OfferPrice => "OFFER_PRICE",
+                Self::TradePrice => "TRADE_PRICE",
+                Self::LeanPrice => "LEAN_PRICE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4082,12 +4012,12 @@ pub mod request_modify_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Condition::EqualTo => "EQUAL_TO",
-                Condition::NotEqualTo => "NOT_EQUAL_TO",
-                Condition::GreaterThan => "GREATER_THAN",
-                Condition::GreaterThanEqualTo => "GREATER_THAN_EQUAL_TO",
-                Condition::LesserThan => "LESSER_THAN",
-                Condition::LesserThanEqualTo => "LESSER_THAN_EQUAL_TO",
+                Self::EqualTo => "EQUAL_TO",
+                Self::NotEqualTo => "NOT_EQUAL_TO",
+                Self::GreaterThan => "GREATER_THAN",
+                Self::GreaterThanEqualTo => "GREATER_THAN_EQUAL_TO",
+                Self::LesserThan => "LESSER_THAN",
+                Self::LesserThanEqualTo => "LESSER_THAN_EQUAL_TO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4126,8 +4056,8 @@ pub mod request_modify_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4141,7 +4071,6 @@ pub mod request_modify_order {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseModifyOrder {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4167,7 +4096,6 @@ pub struct ResponseModifyOrder {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestModifyOrderReferenceData {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4193,7 +4121,6 @@ pub struct RequestModifyOrderReferenceData {
     pub basket_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseModifyOrderReferenceData {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4206,7 +4133,6 @@ pub struct ResponseModifyOrderReferenceData {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestCancelOrder {
     #[prost(int32, required, tag = "154467")]
@@ -4255,8 +4181,8 @@ pub mod request_cancel_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4270,7 +4196,6 @@ pub mod request_cancel_order {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseCancelOrder {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4296,7 +4221,6 @@ pub struct ResponseCancelOrder {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestCancelAllOrders {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4354,8 +4278,8 @@ pub mod request_cancel_all_orders {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4392,10 +4316,10 @@ pub mod request_cancel_all_orders {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UserType::Admin => "USER_TYPE_ADMIN",
-                UserType::Fcm => "USER_TYPE_FCM",
-                UserType::Ib => "USER_TYPE_IB",
-                UserType::Trader => "USER_TYPE_TRADER",
+                Self::Admin => "USER_TYPE_ADMIN",
+                Self::Fcm => "USER_TYPE_FCM",
+                Self::Ib => "USER_TYPE_IB",
+                Self::Trader => "USER_TYPE_TRADER",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4411,7 +4335,6 @@ pub mod request_cancel_all_orders {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseCancelAllOrders {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4425,7 +4348,6 @@ pub struct ResponseCancelAllOrders {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowOrders {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4445,7 +4367,6 @@ pub struct RequestShowOrders {
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowOrders {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4459,7 +4380,6 @@ pub struct ResponseShowOrders {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowOrderHistory {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4482,7 +4402,6 @@ pub struct RequestShowOrderHistory {
     pub basket_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowOrderHistory {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4496,7 +4415,6 @@ pub struct ResponseShowOrderHistory {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowOrderHistorySummary {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4519,7 +4437,6 @@ pub struct RequestShowOrderHistorySummary {
     pub date: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowOrderHistorySummary {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4533,7 +4450,6 @@ pub struct ResponseShowOrderHistorySummary {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowOrderHistoryDetail {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4559,7 +4475,6 @@ pub struct RequestShowOrderHistoryDetail {
     pub date: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowOrderHistoryDetail {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4573,7 +4488,6 @@ pub struct ResponseShowOrderHistoryDetail {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowOrderHistoryDates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4584,7 +4498,6 @@ pub struct RequestShowOrderHistoryDates {
     pub user_msg: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowOrderHistoryDates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4603,7 +4516,6 @@ pub struct ResponseShowOrderHistoryDates {
     #[prost(string, repeated, tag = "110615")]
     pub date: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestOcoOrder {
     #[prost(int32, required, tag = "154467")]
@@ -4660,6 +4572,12 @@ pub struct RequestOcoOrder {
         tag = "154710"
     )]
     pub manual_or_auto: ::prost::alloc::vec::Vec<i32>,
+    #[prost(bool, repeated, packed = "false", tag = "157063")]
+    pub trailing_stop: ::prost::alloc::vec::Vec<bool>,
+    #[prost(int32, repeated, packed = "false", tag = "157064")]
+    pub trail_by_ticks: ::prost::alloc::vec::Vec<i32>,
+    #[prost(int32, repeated, packed = "false", tag = "157065")]
+    pub trail_by_price_id: ::prost::alloc::vec::Vec<i32>,
     #[prost(int32, optional, tag = "157085")]
     pub cancel_at_ssboe: ::core::option::Option<i32>,
     #[prost(int32, optional, tag = "157086")]
@@ -4692,8 +4610,8 @@ pub mod request_oco_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4730,10 +4648,10 @@ pub mod request_oco_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Duration::Day => "DAY",
-                Duration::Gtc => "GTC",
-                Duration::Ioc => "IOC",
-                Duration::Fok => "FOK",
+                Self::Day => "DAY",
+                Self::Gtc => "GTC",
+                Self::Ioc => "IOC",
+                Self::Fok => "FOK",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4772,10 +4690,10 @@ pub mod request_oco_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceType::Limit => "LIMIT",
-                PriceType::Market => "MARKET",
-                PriceType::StopLimit => "STOP_LIMIT",
-                PriceType::StopMarket => "STOP_MARKET",
+                Self::Limit => "LIMIT",
+                Self::Market => "MARKET",
+                Self::StopLimit => "STOP_LIMIT",
+                Self::StopMarket => "STOP_MARKET",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4812,8 +4730,8 @@ pub mod request_oco_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4827,7 +4745,6 @@ pub mod request_oco_order {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseOcoOrder {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -4855,7 +4772,6 @@ pub struct ResponseOcoOrder {
     #[prost(int32, repeated, packed = "false", tag = "150101")]
     pub usecs: ::prost::alloc::vec::Vec<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestBracketOrder {
     #[prost(int32, required, tag = "154467")]
@@ -4912,14 +4828,14 @@ pub struct RequestBracketOrder {
     pub break_even_ticks: ::core::option::Option<i32>,
     #[prost(int32, optional, tag = "157172")]
     pub break_even_trigger_ticks: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag = "154457")]
-    pub target_quantity: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag = "154456")]
-    pub target_ticks: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag = "154459")]
-    pub stop_quantity: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag = "154458")]
-    pub stop_ticks: ::core::option::Option<i32>,
+    #[prost(int32, repeated, packed = "false", tag = "154457")]
+    pub target_quantity: ::prost::alloc::vec::Vec<i32>,
+    #[prost(int32, repeated, packed = "false", tag = "154456")]
+    pub target_ticks: ::prost::alloc::vec::Vec<i32>,
+    #[prost(int32, repeated, packed = "false", tag = "154459")]
+    pub stop_quantity: ::prost::alloc::vec::Vec<i32>,
+    #[prost(int32, repeated, packed = "false", tag = "154458")]
+    pub stop_ticks: ::prost::alloc::vec::Vec<i32>,
     #[prost(int32, optional, tag = "157124")]
     pub trailing_stop_trigger_ticks: ::core::option::Option<i32>,
     #[prost(bool, optional, tag = "157062")]
@@ -4986,10 +4902,10 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UserType::Admin => "USER_TYPE_ADMIN",
-                UserType::Fcm => "USER_TYPE_FCM",
-                UserType::Ib => "USER_TYPE_IB",
-                UserType::Trader => "USER_TYPE_TRADER",
+                Self::Admin => "USER_TYPE_ADMIN",
+                Self::Fcm => "USER_TYPE_FCM",
+                Self::Ib => "USER_TYPE_IB",
+                Self::Trader => "USER_TYPE_TRADER",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5030,12 +4946,12 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BracketType::StopOnly => "STOP_ONLY",
-                BracketType::TargetOnly => "TARGET_ONLY",
-                BracketType::TargetAndStop => "TARGET_AND_STOP",
-                BracketType::StopOnlyStatic => "STOP_ONLY_STATIC",
-                BracketType::TargetOnlyStatic => "TARGET_ONLY_STATIC",
-                BracketType::TargetAndStopStatic => "TARGET_AND_STOP_STATIC",
+                Self::StopOnly => "STOP_ONLY",
+                Self::TargetOnly => "TARGET_ONLY",
+                Self::TargetAndStop => "TARGET_AND_STOP",
+                Self::StopOnlyStatic => "STOP_ONLY_STATIC",
+                Self::TargetOnlyStatic => "TARGET_ONLY_STATIC",
+                Self::TargetAndStopStatic => "TARGET_AND_STOP_STATIC",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5074,8 +4990,8 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5112,10 +5028,10 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Duration::Day => "DAY",
-                Duration::Gtc => "GTC",
-                Duration::Ioc => "IOC",
-                Duration::Fok => "FOK",
+                Self::Day => "DAY",
+                Self::Gtc => "GTC",
+                Self::Ioc => "IOC",
+                Self::Fok => "FOK",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5156,12 +5072,12 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceType::Limit => "LIMIT",
-                PriceType::Market => "MARKET",
-                PriceType::StopLimit => "STOP_LIMIT",
-                PriceType::StopMarket => "STOP_MARKET",
-                PriceType::MarketIfTouched => "MARKET_IF_TOUCHED",
-                PriceType::LimitIfTouched => "LIMIT_IF_TOUCHED",
+                Self::Limit => "LIMIT",
+                Self::Market => "MARKET",
+                Self::StopLimit => "STOP_LIMIT",
+                Self::StopMarket => "STOP_MARKET",
+                Self::MarketIfTouched => "MARKET_IF_TOUCHED",
+                Self::LimitIfTouched => "LIMIT_IF_TOUCHED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5200,8 +5116,8 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5238,10 +5154,10 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceField::BidPrice => "BID_PRICE",
-                PriceField::OfferPrice => "OFFER_PRICE",
-                PriceField::TradePrice => "TRADE_PRICE",
-                PriceField::LeanPrice => "LEAN_PRICE",
+                Self::BidPrice => "BID_PRICE",
+                Self::OfferPrice => "OFFER_PRICE",
+                Self::TradePrice => "TRADE_PRICE",
+                Self::LeanPrice => "LEAN_PRICE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5282,12 +5198,12 @@ pub mod request_bracket_order {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Condition::EqualTo => "EQUAL_TO",
-                Condition::NotEqualTo => "NOT_EQUAL_TO",
-                Condition::GreaterThan => "GREATER_THAN",
-                Condition::GreaterThanEqualTo => "GREATER_THAN_EQUAL_TO",
-                Condition::LesserThan => "LESSER_THAN",
-                Condition::LesserThanEqualTo => "LESSER_THAN_EQUAL_TO",
+                Self::EqualTo => "EQUAL_TO",
+                Self::NotEqualTo => "NOT_EQUAL_TO",
+                Self::GreaterThan => "GREATER_THAN",
+                Self::GreaterThanEqualTo => "GREATER_THAN_EQUAL_TO",
+                Self::LesserThan => "LESSER_THAN",
+                Self::LesserThanEqualTo => "LESSER_THAN_EQUAL_TO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5305,7 +5221,6 @@ pub mod request_bracket_order {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseBracketOrder {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5334,7 +5249,6 @@ pub struct ResponseBracketOrder {
     pub usecs: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowBrackets {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5354,7 +5268,6 @@ pub struct RequestShowBrackets {
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowBrackets {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5383,7 +5296,6 @@ pub struct ResponseShowBrackets {
     pub target_ticks: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowBracketStops {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5403,7 +5315,6 @@ pub struct RequestShowBracketStops {
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowBracketStops {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5442,7 +5353,6 @@ pub struct ResponseShowBracketStops {
     >,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestUpdateTargetBracketLevel {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5471,7 +5381,6 @@ pub struct RequestUpdateTargetBracketLevel {
     pub target_ticks: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseUpdateTargetBracketLevel {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5485,7 +5394,6 @@ pub struct ResponseUpdateTargetBracketLevel {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestUpdateStopBracketLevel {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5514,7 +5422,6 @@ pub struct RequestUpdateStopBracketLevel {
     pub stop_ticks: ::core::option::Option<i32>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseUpdateStopBracketLevel {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5528,7 +5435,6 @@ pub struct ResponseUpdateStopBracketLevel {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestSubscribeToBracketUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5548,7 +5454,6 @@ pub struct RequestSubscribeToBracketUpdates {
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseSubscribeToBracketUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5562,7 +5467,6 @@ pub struct ResponseSubscribeToBracketUpdates {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestListExchangePermissions {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5576,7 +5480,6 @@ pub struct RequestListExchangePermissions {
     pub user: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseListExchangePermissions {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5627,8 +5530,8 @@ pub mod response_list_exchange_permissions {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                EntitlementFlag::Enabled => "ENABLED",
-                EntitlementFlag::Disabled => "DISABLED",
+                Self::Enabled => "ENABLED",
+                Self::Disabled => "DISABLED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5642,7 +5545,6 @@ pub mod response_list_exchange_permissions {
     }
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestLinkOrders {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5665,7 +5567,6 @@ pub struct RequestLinkOrders {
     pub basket_id: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000 , is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseLinkOrders {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5679,7 +5580,6 @@ pub struct ResponseLinkOrders {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestEasyToBorrowList {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5721,8 +5621,8 @@ pub mod request_easy_to_borrow_list {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Request::Subscribe => "SUBSCRIBE",
-                Request::Unsubscribe => "UNSUBSCRIBE",
+                Self::Subscribe => "SUBSCRIBE",
+                Self::Unsubscribe => "UNSUBSCRIBE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5736,7 +5636,6 @@ pub mod request_easy_to_borrow_list {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseEasyToBorrowList {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5770,7 +5669,6 @@ pub struct ResponseEasyToBorrowList {
     #[prost(bool, optional, tag = "110353")]
     pub borrowable: ::core::option::Option<bool>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestOrderSessionConfig {
     #[prost(int32, required, tag = "154467")]
@@ -5781,7 +5679,6 @@ pub struct RequestOrderSessionConfig {
     #[prost(bool, optional, tag = "157750")]
     pub should_defer_request: ::core::option::Option<bool>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseOrderSessionConfig {
     #[prost(int32, required, tag = "154467")]
@@ -5791,7 +5688,6 @@ pub struct ResponseOrderSessionConfig {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestExitPosition {
     #[prost(int32, required, tag = "154467")]
@@ -5848,8 +5744,8 @@ pub mod request_exit_position {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5862,7 +5758,6 @@ pub mod request_exit_position {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseExitPosition {
     #[prost(int32, required, tag = "154467")]
@@ -5878,7 +5773,6 @@ pub struct ResponseExitPosition {
     #[prost(string, optional, tag = "110101")]
     pub exchange: ::core::option::Option<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestReplayExecutions {
     #[prost(int32, required, tag = "154467")]
@@ -5896,7 +5790,6 @@ pub struct RequestReplayExecutions {
     #[prost(int32, optional, tag = "153003")]
     pub finish_index: ::core::option::Option<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseReplayExecutions {
     #[prost(int32, required, tag = "154467")]
@@ -5907,7 +5800,6 @@ pub struct ResponseReplayExecutions {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TradeRoute {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5933,7 +5825,6 @@ pub struct TradeRoute {
     pub is_default: ::core::option::Option<bool>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BracketUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -5970,7 +5861,6 @@ pub struct BracketUpdates {
     #[prost(int32, optional, tag = "154460")]
     pub target_quantity_released: ::core::option::Option<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RithmicOrderNotification {
     #[prost(int32, required, tag = "154467")]
@@ -6065,6 +5955,10 @@ pub struct RithmicOrderNotification {
     pub total_fill_size: ::core::option::Option<i32>,
     #[prost(int32, optional, tag = "154112")]
     pub total_unfilled_size: ::core::option::Option<i32>,
+    #[prost(int32, optional, tag = "157064")]
+    pub trail_by_ticks: ::core::option::Option<i32>,
+    #[prost(int32, optional, tag = "157065")]
+    pub trail_by_price_id: ::core::option::Option<i32>,
     #[prost(string, optional, tag = "112002")]
     pub sequence_number: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "149263")]
@@ -6131,7 +6025,6 @@ pub mod rithmic_order_notification {
         TriggerPending = 18,
         Generic = 19,
         LinkOrdersFailed = 20,
-        ReleasePending = 21,
     }
     impl NotifyType {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -6140,27 +6033,26 @@ pub mod rithmic_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                NotifyType::OrderRcvdFromClnt => "ORDER_RCVD_FROM_CLNT",
-                NotifyType::ModifyRcvdFromClnt => "MODIFY_RCVD_FROM_CLNT",
-                NotifyType::CancelRcvdFromClnt => "CANCEL_RCVD_FROM_CLNT",
-                NotifyType::OpenPending => "OPEN_PENDING",
-                NotifyType::ModifyPending => "MODIFY_PENDING",
-                NotifyType::CancelPending => "CANCEL_PENDING",
-                NotifyType::OrderRcvdByExchGtwy => "ORDER_RCVD_BY_EXCH_GTWY",
-                NotifyType::ModifyRcvdByExchGtwy => "MODIFY_RCVD_BY_EXCH_GTWY",
-                NotifyType::CancelRcvdByExchGtwy => "CANCEL_RCVD_BY_EXCH_GTWY",
-                NotifyType::OrderSentToExch => "ORDER_SENT_TO_EXCH",
-                NotifyType::ModifySentToExch => "MODIFY_SENT_TO_EXCH",
-                NotifyType::CancelSentToExch => "CANCEL_SENT_TO_EXCH",
-                NotifyType::Open => "OPEN",
-                NotifyType::Modified => "MODIFIED",
-                NotifyType::Complete => "COMPLETE",
-                NotifyType::ModificationFailed => "MODIFICATION_FAILED",
-                NotifyType::CancellationFailed => "CANCELLATION_FAILED",
-                NotifyType::TriggerPending => "TRIGGER_PENDING",
-                NotifyType::Generic => "GENERIC",
-                NotifyType::LinkOrdersFailed => "LINK_ORDERS_FAILED",
-                NotifyType::ReleasePending => "RELEASE_PENDING",
+                Self::OrderRcvdFromClnt => "ORDER_RCVD_FROM_CLNT",
+                Self::ModifyRcvdFromClnt => "MODIFY_RCVD_FROM_CLNT",
+                Self::CancelRcvdFromClnt => "CANCEL_RCVD_FROM_CLNT",
+                Self::OpenPending => "OPEN_PENDING",
+                Self::ModifyPending => "MODIFY_PENDING",
+                Self::CancelPending => "CANCEL_PENDING",
+                Self::OrderRcvdByExchGtwy => "ORDER_RCVD_BY_EXCH_GTWY",
+                Self::ModifyRcvdByExchGtwy => "MODIFY_RCVD_BY_EXCH_GTWY",
+                Self::CancelRcvdByExchGtwy => "CANCEL_RCVD_BY_EXCH_GTWY",
+                Self::OrderSentToExch => "ORDER_SENT_TO_EXCH",
+                Self::ModifySentToExch => "MODIFY_SENT_TO_EXCH",
+                Self::CancelSentToExch => "CANCEL_SENT_TO_EXCH",
+                Self::Open => "OPEN",
+                Self::Modified => "MODIFIED",
+                Self::Complete => "COMPLETE",
+                Self::ModificationFailed => "MODIFICATION_FAILED",
+                Self::CancellationFailed => "CANCELLATION_FAILED",
+                Self::TriggerPending => "TRIGGER_PENDING",
+                Self::Generic => "GENERIC",
+                Self::LinkOrdersFailed => "LINK_ORDERS_FAILED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6186,7 +6078,6 @@ pub mod rithmic_order_notification {
                 "TRIGGER_PENDING" => Some(Self::TriggerPending),
                 "GENERIC" => Some(Self::Generic),
                 "LINK_ORDERS_FAILED" => Some(Self::LinkOrdersFailed),
-                "RELEASE_PENDING" => Some(Self::ReleasePending),
                 _ => None,
             }
         }
@@ -6215,9 +6106,9 @@ pub mod rithmic_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
-                TransactionType::Ss => "SS",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
+                Self::Ss => "SS",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6255,10 +6146,10 @@ pub mod rithmic_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Duration::Day => "DAY",
-                Duration::Gtc => "GTC",
-                Duration::Ioc => "IOC",
-                Duration::Fok => "FOK",
+                Self::Day => "DAY",
+                Self::Gtc => "GTC",
+                Self::Ioc => "IOC",
+                Self::Fok => "FOK",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6297,10 +6188,10 @@ pub mod rithmic_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceType::Limit => "LIMIT",
-                PriceType::Market => "MARKET",
-                PriceType::StopLimit => "STOP_LIMIT",
-                PriceType::StopMarket => "STOP_MARKET",
+                Self::Limit => "LIMIT",
+                Self::Market => "MARKET",
+                Self::StopLimit => "STOP_LIMIT",
+                Self::StopMarket => "STOP_MARKET",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6341,12 +6232,12 @@ pub mod rithmic_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BracketType::StopOnly => "STOP_ONLY",
-                BracketType::TargetOnly => "TARGET_ONLY",
-                BracketType::TargetAndStop => "TARGET_AND_STOP",
-                BracketType::StopOnlyStatic => "STOP_ONLY_STATIC",
-                BracketType::TargetOnlyStatic => "TARGET_ONLY_STATIC",
-                BracketType::TargetAndStopStatic => "TARGET_AND_STOP_STATIC",
+                Self::StopOnly => "STOP_ONLY",
+                Self::TargetOnly => "TARGET_ONLY",
+                Self::TargetAndStop => "TARGET_AND_STOP",
+                Self::StopOnlyStatic => "STOP_ONLY_STATIC",
+                Self::TargetOnlyStatic => "TARGET_ONLY_STATIC",
+                Self::TargetAndStopStatic => "TARGET_AND_STOP_STATIC",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6385,8 +6276,8 @@ pub mod rithmic_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6399,7 +6290,6 @@ pub mod rithmic_order_notification {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExchangeOrderNotification {
     #[prost(int32, required, tag = "154467")]
@@ -6444,6 +6334,8 @@ pub struct ExchangeOrderNotification {
     pub trade_route: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "149238")]
     pub exchange_order_id: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, optional, tag = "153647")]
+    pub tp_exchange_order_id: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "110116")]
     pub instrument_type: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(int32, optional, tag = "112004")]
@@ -6530,6 +6422,10 @@ pub struct ExchangeOrderNotification {
     pub total_unfilled_size: ::core::option::Option<i32>,
     #[prost(string, optional, tag = "149266")]
     pub trigger_id: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(int32, optional, tag = "157064")]
+    pub trail_by_ticks: ::core::option::Option<i32>,
+    #[prost(int32, optional, tag = "157065")]
+    pub trail_by_price_id: ::core::option::Option<i32>,
     #[prost(string, optional, tag = "112002")]
     pub sequence_number: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "149263")]
@@ -6597,15 +6493,15 @@ pub mod exchange_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                NotifyType::Status => "STATUS",
-                NotifyType::Modify => "MODIFY",
-                NotifyType::Cancel => "CANCEL",
-                NotifyType::Trigger => "TRIGGER",
-                NotifyType::Fill => "FILL",
-                NotifyType::Reject => "REJECT",
-                NotifyType::NotModified => "NOT_MODIFIED",
-                NotifyType::NotCancelled => "NOT_CANCELLED",
-                NotifyType::Generic => "GENERIC",
+                Self::Status => "STATUS",
+                Self::Modify => "MODIFY",
+                Self::Cancel => "CANCEL",
+                Self::Trigger => "TRIGGER",
+                Self::Fill => "FILL",
+                Self::Reject => "REJECT",
+                Self::NotModified => "NOT_MODIFIED",
+                Self::NotCancelled => "NOT_CANCELLED",
+                Self::Generic => "GENERIC",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6648,9 +6544,9 @@ pub mod exchange_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TransactionType::Buy => "BUY",
-                TransactionType::Sell => "SELL",
-                TransactionType::Ss => "SS",
+                Self::Buy => "BUY",
+                Self::Sell => "SELL",
+                Self::Ss => "SS",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6688,10 +6584,10 @@ pub mod exchange_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Duration::Day => "DAY",
-                Duration::Gtc => "GTC",
-                Duration::Ioc => "IOC",
-                Duration::Fok => "FOK",
+                Self::Day => "DAY",
+                Self::Gtc => "GTC",
+                Self::Ioc => "IOC",
+                Self::Fok => "FOK",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6730,10 +6626,10 @@ pub mod exchange_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                PriceType::Limit => "LIMIT",
-                PriceType::Market => "MARKET",
-                PriceType::StopLimit => "STOP_LIMIT",
-                PriceType::StopMarket => "STOP_MARKET",
+                Self::Limit => "LIMIT",
+                Self::Market => "MARKET",
+                Self::StopLimit => "STOP_LIMIT",
+                Self::StopMarket => "STOP_MARKET",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6774,12 +6670,12 @@ pub mod exchange_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BracketType::StopOnly => "STOP_ONLY",
-                BracketType::TargetOnly => "TARGET_ONLY",
-                BracketType::TargetAndStop => "TARGET_AND_STOP",
-                BracketType::StopOnlyStatic => "STOP_ONLY_STATIC",
-                BracketType::TargetOnlyStatic => "TARGET_ONLY_STATIC",
-                BracketType::TargetAndStopStatic => "TARGET_AND_STOP_STATIC",
+                Self::StopOnly => "STOP_ONLY",
+                Self::TargetOnly => "TARGET_ONLY",
+                Self::TargetAndStop => "TARGET_AND_STOP",
+                Self::StopOnlyStatic => "STOP_ONLY_STATIC",
+                Self::TargetOnlyStatic => "TARGET_ONLY_STATIC",
+                Self::TargetAndStopStatic => "TARGET_AND_STOP_STATIC",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6818,8 +6714,8 @@ pub mod exchange_order_notification {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OrderPlacement::Manual => "MANUAL",
-                OrderPlacement::Auto => "AUTO",
+                Self::Manual => "MANUAL",
+                Self::Auto => "AUTO",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6833,7 +6729,6 @@ pub mod exchange_order_notification {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AccountListUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -6855,7 +6750,6 @@ pub struct AccountListUpdates {
     >,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateEasyToBorrowList {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -6880,7 +6774,6 @@ pub struct UpdateEasyToBorrowList {
     #[prost(bool, optional, tag = "110353")]
     pub borrowable: ::core::option::Option<bool>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AccountRmsUpdates {
     #[prost(int32, required, tag = "154467")]
@@ -6930,9 +6823,7 @@ pub mod account_rms_updates {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                UpdateBits::AutoLiqThresholdCurrentValue => {
-                    "AUTO_LIQ_THRESHOLD_CURRENT_VALUE"
-                }
+                Self::AutoLiqThresholdCurrentValue => "AUTO_LIQ_THRESHOLD_CURRENT_VALUE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -6947,7 +6838,6 @@ pub mod account_rms_updates {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestPnLPositionUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -6998,8 +6888,8 @@ pub mod request_pn_l_position_updates {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Request::Subscribe => "SUBSCRIBE",
-                Request::Unsubscribe => "UNSUBSCRIBE",
+                Self::Subscribe => "SUBSCRIBE",
+                Self::Unsubscribe => "UNSUBSCRIBE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7013,7 +6903,6 @@ pub mod request_pn_l_position_updates {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponsePnLPositionUpdates {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -7027,7 +6916,6 @@ pub struct ResponsePnLPositionUpdates {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestPnLPositionSnapshot {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -7047,7 +6935,6 @@ pub struct RequestPnLPositionSnapshot {
     pub account_id: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponsePnLPositionSnapshot {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -7060,7 +6947,6 @@ pub struct ResponsePnLPositionSnapshot {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AccountPnLPositionUpdate {
     #[prost(int32, required, tag = "154467")]
@@ -7150,7 +7036,6 @@ pub struct AccountPnLPositionUpdate {
     #[prost(int32, optional, tag = "150101")]
     pub usecs: ::core::option::Option<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InstrumentPnLPositionUpdate {
     #[prost(int32, required, tag = "154467")]
@@ -7220,7 +7105,6 @@ pub struct InstrumentPnLPositionUpdate {
     #[prost(int32, optional, tag = "150101")]
     pub usecs: ::core::option::Option<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestTickBarReplay {
     #[prost(int32, required, tag = "154467")]
@@ -7292,9 +7176,9 @@ pub mod request_tick_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::TickBar => "TICK_BAR",
-                BarType::RangeBar => "RANGE_BAR",
-                BarType::VolumeBar => "VOLUME_BAR",
+                Self::TickBar => "TICK_BAR",
+                Self::RangeBar => "RANGE_BAR",
+                Self::VolumeBar => "VOLUME_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7330,8 +7214,8 @@ pub mod request_tick_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarSubType::Regular => "REGULAR",
-                BarSubType::Custom => "CUSTOM",
+                Self::Regular => "REGULAR",
+                Self::Custom => "CUSTOM",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7366,8 +7250,8 @@ pub mod request_tick_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Direction::First => "FIRST",
-                Direction::Last => "LAST",
+                Self::First => "FIRST",
+                Self::Last => "LAST",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7402,8 +7286,8 @@ pub mod request_tick_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TimeOrder::Forwards => "FORWARDS",
-                TimeOrder::Backwards => "BACKWARDS",
+                Self::Forwards => "FORWARDS",
+                Self::Backwards => "BACKWARDS",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7416,7 +7300,6 @@ pub mod request_tick_bar_replay {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseTickBarReplay {
     #[prost(int32, required, tag = "154467")]
@@ -7492,9 +7375,9 @@ pub mod response_tick_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::TickBar => "TICK_BAR",
-                BarType::RangeBar => "RANGE_BAR",
-                BarType::VolumeBar => "VOLUME_BAR",
+                Self::TickBar => "TICK_BAR",
+                Self::RangeBar => "RANGE_BAR",
+                Self::VolumeBar => "VOLUME_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7530,8 +7413,8 @@ pub mod response_tick_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarSubType::Regular => "REGULAR",
-                BarSubType::Custom => "CUSTOM",
+                Self::Regular => "REGULAR",
+                Self::Custom => "CUSTOM",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7545,7 +7428,6 @@ pub mod response_tick_bar_replay {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestTickBarUpdate {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -7609,9 +7491,9 @@ pub mod request_tick_bar_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::TickBar => "TICK_BAR",
-                BarType::RangeBar => "RANGE_BAR",
-                BarType::VolumeBar => "VOLUME_BAR",
+                Self::TickBar => "TICK_BAR",
+                Self::RangeBar => "RANGE_BAR",
+                Self::VolumeBar => "VOLUME_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7647,8 +7529,8 @@ pub mod request_tick_bar_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarSubType::Regular => "REGULAR",
-                BarSubType::Custom => "CUSTOM",
+                Self::Regular => "REGULAR",
+                Self::Custom => "CUSTOM",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7683,8 +7565,8 @@ pub mod request_tick_bar_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Request::Subscribe => "SUBSCRIBE",
-                Request::Unsubscribe => "UNSUBSCRIBE",
+                Self::Subscribe => "SUBSCRIBE",
+                Self::Unsubscribe => "UNSUBSCRIBE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7698,7 +7580,6 @@ pub mod request_tick_bar_update {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseTickBarUpdate {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -7711,7 +7592,6 @@ pub struct ResponseTickBarUpdate {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestTimeBarReplay {
     #[prost(int32, required, tag = "154467")]
@@ -7774,10 +7654,10 @@ pub mod request_time_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::SecondBar => "SECOND_BAR",
-                BarType::MinuteBar => "MINUTE_BAR",
-                BarType::DailyBar => "DAILY_BAR",
-                BarType::WeeklyBar => "WEEKLY_BAR",
+                Self::SecondBar => "SECOND_BAR",
+                Self::MinuteBar => "MINUTE_BAR",
+                Self::DailyBar => "DAILY_BAR",
+                Self::WeeklyBar => "WEEKLY_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7814,8 +7694,8 @@ pub mod request_time_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Direction::First => "FIRST",
-                Direction::Last => "LAST",
+                Self::First => "FIRST",
+                Self::Last => "LAST",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7850,8 +7730,8 @@ pub mod request_time_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                TimeOrder::Forwards => "FORWARDS",
-                TimeOrder::Backwards => "BACKWARDS",
+                Self::Forwards => "FORWARDS",
+                Self::Backwards => "BACKWARDS",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7864,7 +7744,6 @@ pub mod request_time_bar_replay {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseTimeBarReplay {
     #[prost(int32, required, tag = "154467")]
@@ -7937,10 +7816,10 @@ pub mod response_time_bar_replay {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::SecondBar => "SECOND_BAR",
-                BarType::MinuteBar => "MINUTE_BAR",
-                BarType::DailyBar => "DAILY_BAR",
-                BarType::WeeklyBar => "WEEKLY_BAR",
+                Self::SecondBar => "SECOND_BAR",
+                Self::MinuteBar => "MINUTE_BAR",
+                Self::DailyBar => "DAILY_BAR",
+                Self::WeeklyBar => "WEEKLY_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7956,7 +7835,6 @@ pub mod response_time_bar_replay {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestTimeBarUpdate {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -8008,10 +7886,10 @@ pub mod request_time_bar_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::SecondBar => "SECOND_BAR",
-                BarType::MinuteBar => "MINUTE_BAR",
-                BarType::DailyBar => "DAILY_BAR",
-                BarType::WeeklyBar => "WEEKLY_BAR",
+                Self::SecondBar => "SECOND_BAR",
+                Self::MinuteBar => "MINUTE_BAR",
+                Self::DailyBar => "DAILY_BAR",
+                Self::WeeklyBar => "WEEKLY_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -8048,8 +7926,8 @@ pub mod request_time_bar_update {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Request::Subscribe => "SUBSCRIBE",
-                Request::Unsubscribe => "UNSUBSCRIBE",
+                Self::Subscribe => "SUBSCRIBE",
+                Self::Unsubscribe => "UNSUBSCRIBE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -8063,7 +7941,6 @@ pub mod request_time_bar_update {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseTimeBarUpdate {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -8076,7 +7953,6 @@ pub struct ResponseTimeBarUpdate {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestVolumeProfileMinuteBars {
     #[prost(int32, required, tag = "154467")]
@@ -8098,7 +7974,6 @@ pub struct RequestVolumeProfileMinuteBars {
     #[prost(bool, optional, tag = "153642")]
     pub resume_bars: ::core::option::Option<bool>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseVolumeProfileMinuteBars {
     #[prost(int32, required, tag = "154467")]
@@ -8150,7 +8025,6 @@ pub struct ResponseVolumeProfileMinuteBars {
     #[prost(int32, repeated, packed = "false", tag = "119222")]
     pub profile_ask_aggressor_trades: ::prost::alloc::vec::Vec<i32>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestResumeBars {
     #[prost(int32, required, tag = "154467")]
@@ -8160,7 +8034,6 @@ pub struct RequestResumeBars {
     #[prost(string, optional, tag = "132758")]
     pub request_key: ::core::option::Option<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseResumeBars {
     #[prost(int32, required, tag = "154467")]
@@ -8171,7 +8044,6 @@ pub struct ResponseResumeBars {
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TickBar {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -8252,9 +8124,9 @@ pub mod tick_bar {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::TickBar => "TICK_BAR",
-                BarType::RangeBar => "RANGE_BAR",
-                BarType::VolumeBar => "VOLUME_BAR",
+                Self::TickBar => "TICK_BAR",
+                Self::RangeBar => "RANGE_BAR",
+                Self::VolumeBar => "VOLUME_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -8290,8 +8162,8 @@ pub mod tick_bar {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarSubType::Regular => "REGULAR",
-                BarSubType::Custom => "CUSTOM",
+                Self::Regular => "REGULAR",
+                Self::Custom => "CUSTOM",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -8305,7 +8177,6 @@ pub mod tick_bar {
     }
 }
 /// PB_OFFSET = 100000, is the offset added for each MNM field id
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeBar {
     /// PB_OFFSET + MNM_TEMPLATE_ID
@@ -8387,10 +8258,10 @@ pub mod time_bar {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                BarType::SecondBar => "SECOND_BAR",
-                BarType::MinuteBar => "MINUTE_BAR",
-                BarType::DailyBar => "DAILY_BAR",
-                BarType::WeeklyBar => "WEEKLY_BAR",
+                Self::SecondBar => "SECOND_BAR",
+                Self::MinuteBar => "MINUTE_BAR",
+                Self::DailyBar => "DAILY_BAR",
+                Self::WeeklyBar => "WEEKLY_BAR",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -8405,7 +8276,6 @@ pub mod time_bar {
         }
     }
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestListUnacceptedAgreements {
     #[prost(int32, required, tag = "154467")]
@@ -8413,7 +8283,6 @@ pub struct RequestListUnacceptedAgreements {
     #[prost(string, repeated, tag = "132760")]
     pub user_msg: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseListUnacceptedAgreements {
     #[prost(int32, required, tag = "154467")]
@@ -8437,7 +8306,6 @@ pub struct ResponseListUnacceptedAgreements {
         ::prost::alloc::string::String,
     >,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestListAcceptedAgreements {
     #[prost(int32, required, tag = "154467")]
@@ -8445,7 +8313,6 @@ pub struct RequestListAcceptedAgreements {
     #[prost(string, repeated, tag = "132760")]
     pub user_msg: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseListAcceptedAgreements {
     #[prost(int32, required, tag = "154467")]
@@ -8475,7 +8342,6 @@ pub struct ResponseListAcceptedAgreements {
     #[prost(string, optional, tag = "153407")]
     pub agreement_id: ::core::option::Option<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestAcceptAgreement {
     #[prost(int32, required, tag = "154467")]
@@ -8490,7 +8356,6 @@ pub struct RequestAcceptAgreement {
         ::prost::alloc::string::String,
     >,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseAcceptAgreement {
     #[prost(int32, required, tag = "154467")]
@@ -8500,7 +8365,6 @@ pub struct ResponseAcceptAgreement {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestSetRithmicMrktDataSelfCertStatus {
     #[prost(int32, required, tag = "154467")]
@@ -8514,7 +8378,6 @@ pub struct RequestSetRithmicMrktDataSelfCertStatus {
         ::prost::alloc::string::String,
     >,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseSetRithmicMrktDataSelfCertStatus {
     #[prost(int32, required, tag = "154467")]
@@ -8524,7 +8387,6 @@ pub struct ResponseSetRithmicMrktDataSelfCertStatus {
     #[prost(string, repeated, tag = "132766")]
     pub rp_code: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestShowAgreement {
     #[prost(int32, required, tag = "154467")]
@@ -8534,7 +8396,6 @@ pub struct RequestShowAgreement {
     #[prost(string, optional, tag = "153407")]
     pub agreement_id: ::core::option::Option<::prost::alloc::string::String>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResponseShowAgreement {
     #[prost(int32, required, tag = "154467")]

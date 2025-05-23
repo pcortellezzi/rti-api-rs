@@ -22,7 +22,7 @@ Or manually add it to your `Cargo.toml` file.
 
 ```
 [dependencies]
-rithmic-rs = "0.3.4"
+rithmic-rs = "0.3.6"
 ```
 
 ## Usage
