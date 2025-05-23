@@ -83,7 +83,7 @@ impl RithmicSenderApi {
 
         let req = RequestLogin {
             template_id: 10,
-            template_version: Some("5.31".into()),
+            template_version: Some("5.30".into()),
             user: Some(user.to_string()),
             password: Some(password.to_string()),
             app_name: Some("pede:pts".to_string()),

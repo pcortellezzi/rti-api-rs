@@ -44,13 +44,13 @@ pub fn get_config(env: &RithmicConnectionSystem) -> RithmicConnectionInfo {
 
     match env {
         RithmicConnectionSystem::Demo => RithmicConnectionInfo {
-            url: "wss://rprotocol-beta.rithmic.com:443".into(),
+            url: "wss://rprotocol.rithmic.com:443".into(),
             user: env::var("RITHMIC_DEMO_USER").unwrap(),
             password: env::var("RITHMIC_DEMO_PW").unwrap(),
             system_name: "Rithmic Paper Trading".into(),
         },
         RithmicConnectionSystem::Live => RithmicConnectionInfo {
-            url: "wss://rprotocol-beta.rithmic.com:443".into(),
+            url: "wss://rprotocol.rithmic.com:443".into(),
             user: env::var("RITHMIC_LIVE_USER").unwrap(),
             password: env::var("RITHMIC_LIVE_PW").unwrap(),
             system_name: "Rithmic 01".into(),
