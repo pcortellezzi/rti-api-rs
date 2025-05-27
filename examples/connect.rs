@@ -1,4 +1,5 @@
-//! Example: Connect to the RithmicTickerPlant and stream ticks
+//! Example: Connect to the RithmicTickerPlant
+use std::env;
 use tracing::{Level, event};
 
 use rithmic_rs::{
@@ -9,16 +10,23 @@ use rithmic_rs::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load credentials from environment variables (or .env)
+    // Before running this example, copy .env.blank to .env
+    // and fill in RITHMIC_ACCOUNT_ID, FCM_ID, and IB_ID
     dotenv::dotenv().ok();
 
     tracing_subscriber::fmt().init();
 
+    let account_id = env::var("RITHMIC_ACCOUNT_ID")
+        .expect("RITHMIC_ACCOUNT_ID must be set in environment variables");
+
+    let fcm_id = env::var("FCM_ID").expect("RITHMIC_FCM_ID must be set in environment variables");
+    let ib_id = env::var("IB_ID").expect("RITHMIC_IB_ID must be set in environment variables");
+
     let account_info = AccountInfo {
-        account_id: "XXXXXXXX".to_string(),
+        account_id,
         env: RithmicConnectionSystem::Demo,
-        fcm_id: "XXXXXX".to_string(),
-        ib_id: "XXXXXX".to_string(),
+        fcm_id,
+        ib_id,
     };
 
     let ticker_plant = RithmicTickerPlant::new(&account_info).await;
