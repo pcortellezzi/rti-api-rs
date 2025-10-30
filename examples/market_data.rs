@@ -6,6 +6,7 @@ use rithmic_rs::{
     RithmicTickerPlant,
     connection_info::{AccountInfo, RithmicConnectionSystem},
     rti::messages::RithmicMessage,
+    rti::request_market_data_update::UpdateBits,
     ws::RithmicStream,
 };
 
@@ -41,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Subscribing to market data for {} on {}", symbol, exchange);
 
-    let _ = handle.subscribe(&symbol, &exchange).await?;
+    let _ = handle.subscribe(&symbol, &exchange, vec![UpdateBits::LastTrade, UpdateBits::Bbo]).await?;
 
     // Process a handful of updates, then exit
     let mut processed = 0usize;
