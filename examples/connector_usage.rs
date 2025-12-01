@@ -1,12 +1,10 @@
-//! Example: Load historical ticks
+//! Example: RithmicConnector usage for all plants
 use std::env;
-use tracing::{Level, event};
-
 use rithmic_rs::{
     RithmicConnector,
     connection_info::{AccountInfo, RithmicConnectionSystem},
-    rti::messages::RithmicMessage,
 };
+use tracing::{Level, event};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,51 +36,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     connector.authenticate().await?;
     event!(Level::INFO, "Connected and Authenticated with Rithmic");
 
-    // Connect to the history plant
+    // Connect to all plants
+    let ticker_handle = connector.connect_ticker().await?;
+    event!(Level::INFO, "Connected to Ticker Plant");
     let history_handle = connector.connect_history().await?;
     event!(Level::INFO, "Connected to History Plant");
+    let order_handle = connector.connect_order().await?;
+    event!(Level::INFO, "Connected to Order Plant");
+    let pnl_handle = connector.connect_pnl().await?;
+    event!(Level::INFO, "Connected to PnL Plant");
 
-    // Login to the history plant
+    // Login to all plants
+    ticker_handle.login().await?;
+    event!(Level::INFO, "Logged into Ticker Plant");
     history_handle.login().await?;
     event!(Level::INFO, "Logged into History Plant");
+    order_handle.login().await?;
+    event!(Level::INFO, "Logged into Order Plant");
+    pnl_handle.login().await?;
+    event!(Level::INFO, "Logged into PnL Plant");
 
-    // Adjust symbol and time range to match
-    let symbol = "ESU5".to_string(); // Example: ES December 2024 contract
-    let exchange = "CME".to_string();
-    let start_time = 1750370400;
-    let end_time = 1750453200;
+    // Here you would typically use the handles to send requests and subscribe to data
+    // For this example, we'll just disconnect after successful login
+    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
-    event!(
-        Level::INFO,
-        "Loading ticks for {} from {} to {}",
-        symbol,
-        start_time,
-        end_time
-    );
-
-    // Rithmic only returns 10_000 ticks at a time, and note that there can be several ticks sharing the same timestamp
-    let tick_responses = history_handle
-        .load_ticks(symbol.clone(), exchange, start_time, end_time)
-        .await?;
-
-    event!(
-        Level::INFO,
-        "Received {} tick responses",
-        tick_responses.len()
-    );
-
-    // Process the tick responses
-    for r in tick_responses.iter() {
-        match &r.message {
-            RithmicMessage::ResponseTickBarReplay(tick_message) => {
-                event!(Level::INFO, "Tick: {:#?}", tick_message);
-            }
-            _ => {
-                event!(Level::WARN, "Received unexpected message type");
-            }
-        }
-    }
-
+    // Disconnect from the Rithmic system
     connector.disconnect().await?;
     event!(Level::INFO, "Disconnected from Rithmic");
 

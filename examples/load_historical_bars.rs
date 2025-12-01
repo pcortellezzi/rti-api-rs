@@ -1,86 +1,64 @@
-use std::env;
-use tracing::{Level, event};
-
-use rithmic_rs::{
-    RithmicHistoryPlant,
-    connection_info::{AccountInfo, RithmicConnectionSystem},
-    rti::{messages::RithmicMessage, request_time_bar_replay::BarType},
-    ws::RithmicStream,
-};
+use rithmic_rs::{RithmicClient, connection_info::{RithmicConnectionSystem, get_credentials_from_env}, RithmicMessage};
+use dotenv::dotenv;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Before running this example, copy .env.blank to .env
-    // and fill in RITHMIC_ACCOUNT_ID, FCM_ID, and IB_ID
-    dotenv::dotenv().ok();
+async fn main() -> Result<(), anyhow::Error> {
+    dotenv().ok();
+    tracing_subscriber::fmt::init();
 
-    tracing_subscriber::fmt().init();
+    let env_type = RithmicConnectionSystem::Demo;
+    let credentials = get_credentials_from_env(&env_type);
 
-    let account_id = env::var("RITHMIC_ACCOUNT_ID")
-        .expect("RITHMIC_ACCOUNT_ID must be set in environment variables");
+    println!("Connecting to Rithmic...");
+    let mut client = RithmicClient::new(credentials);
+    let mut event_rx = client.connect().await?;
+    
+    let symbol = "ESZ5"; // Adjust if needed
+    let exchange = "CME";
+    
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i32;
+    let start_time = now - 3600; // 1 hour ago
+    let end_time = now;
 
-    let fcm_id = env::var("FCM_ID").expect("RITHMIC_FCM_ID must be set in environment variables");
-    let ib_id = env::var("IB_ID").expect("RITHMIC_IB_ID must be set in environment variables");
-
-    let account_info = AccountInfo {
-        account_id,
-        env: RithmicConnectionSystem::Demo,
-        fcm_id,
-        ib_id,
-    };
-
-    let history_plant = RithmicHistoryPlant::new(&account_info).await;
-    let handle = history_plant.get_handle();
-
-    handle.login().await?;
-
-    // Adjust symbol and time range to match
-    let symbol = "ESU5".to_string(); // Example: ES December 2024 contract
-    let exchange = "CME".to_string();
-    let start_time = 1750370400;
-    let end_time = 1750453200;
-
-    event!(
-        Level::INFO,
-        "Loading 5-minute bars for {} from {} to {}",
-        symbol,
-        start_time,
-        end_time
-    );
-
-    // Load 5-minute time bars
-    let five_min_bars = handle
-        .load_time_bars(
-            symbol.clone(),
-            exchange.clone(),
-            BarType::MinuteBar,
-            5, // 5-minute bars
-            start_time,
-            end_time,
-        )
-        .await?;
-
-    event!(
-        Level::INFO,
-        "Received {} 5-minute bar responses",
-        five_min_bars.len()
-    );
-
-    // Process the 5-minute bar responses
-    for r in five_min_bars.iter() {
-        match &r.message {
-            RithmicMessage::ResponseTimeBarReplay(bar_message) => {
-                event!(Level::INFO, "5-minute bar: {:#?}", bar_message);
-            }
-            _ => {
-                event!(Level::WARN, "Received unexpected message type");
-            }
+    println!("Requesting Tick Bar Replay for {} from {} to {}", symbol, start_time, end_time);
+    
+    match client.replay_tick_bars(symbol, exchange, start_time, end_time).await {
+        Ok(_) => println!("Replay request sent."),
+        Err(e) => {
+            println!("Failed to send replay request: {}", e);
+            return Ok(());
         }
     }
 
-    let _ = handle.disconnect().await;
-
-    event!(Level::INFO, "Disconnected from Rithmic History Plant");
+    println!("Waiting for replay data...");
+    let mut count = 0;
+    
+    loop {
+        let msg = event_rx.recv().await;
+        match msg {
+            Some(response) => {
+                match response.message {
+                    RithmicMessage::ResponseTickBarReplay(replay) => {
+                        // Inspect the data
+                        println!("Bar: Time={:?} Close={:?} Vol={:?}", 
+                            replay.data_bar_ssboe.first(), // Just peek first timestamp if any
+                            replay.close_price,
+                            replay.volume
+                        );
+                        count += 1;
+                        
+                        if !response.has_more {
+                            println!("Replay End detected (has_more=false). Total bars: {}", count);
+                            break;
+                        }
+                    },
+                    _ => {}
+                }
+            }
+            None => break,
+        }
+    }
 
     Ok(())
 }

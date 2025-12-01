@@ -1,156 +1,120 @@
-# Rust Rithmic R | Protocol API client
+# Rithmic-rs
 
-Unofficial rust client for connecting to Rithmic's R | Protocol API.
+Rust client for the Rithmic R | Protocol API to build algo trading systems.
 
-[Documentation](https://docs.rs/rithmic-rs/latest/rithmic_rs/) | [Rithmic APIs](https://www.rithmic.com/apis)
+This library provides a high-level connector for interacting with the Rithmic API, with a focus on ease of use and proper state management. It handles the connection and authentication flow, and provides access to different "plants" for interacting with various aspects of the Rithmic API.
 
-_rithmic protocol version: 0.84.0.0_
+## Features
 
-Not all functionality has been implemented, but this is currently being used to trade live capital through Rithmic.
+-   Connect to Rithmic's ticker, history, order, and PNL (Profit and Loss) plants.
+-   State management for connections (`Disconnected`, `Connected`, `Authenticated`).
+-   Asynchronous API using `tokio`.
+-   Protobuf-based communication with the Rithmic API.
 
-Only `order_plant`, `ticker_plant`, `pnl_plant`, `history_plant` are provided. Each plant uses the actor pattern so you'll want to start a plant, and communicate / call commands with it using it's handle. The crate is setup to be used with tokio channels.
+## Getting Started
 
-The `history_plant` supports loading both historical tick data and time bar data (1-second, 1-minute, 5-minute, daily, and weekly bars).
+Add `rithmic-rs` to your `Cargo.toml`:
 
-## Installation
-
-You can install it from crates.io
-
-```
-$ cargo add rithmic-rs
-```
-
-Or manually add it to your `Cargo.toml` file.
-
-
-```
+```toml
 [dependencies]
 rithmic-rs = "0.4.2"
 ```
 
-## Usage
+### Example Usage
 
-Store your credentials in a `.env` file.
-
-```sh
-# .env
-RITHMIC_TEST_USER=<USER_NAME>
-RITHMIC_TEST_PW=<PASSWORD>
-
-RITHMIC_DEMO_USER=<USER_NAME>
-RITHMIC_DEMO_PW=<PASSWORD>
-
-RITHMIC_LIVE_USER=<USER_NAME>
-RITHMIC_LIVE_PW=<PASSWORD>
-```
-
-Rithmic supports three types of account environments, `RithmicConnectionSystem::Demo` is used for paper trading, `RithmicConnectionSystem::Live` will connect to your funded account, and `RithmicConnectionSystem::Test` connects to the test environment before your app is approved.
-
-To use this crate, pass in your account information to one of the plants. Doing so will spawn an actor in a new thread that listens to commands that you send via a handle. Some plants like the ticker plant will also include a broadcast channel that you can listen to for wire level updates.
+Here's a quick example of how to connect to the Rithmic ticker plant:
 
 ```rust
-pub async fn stream_live_ticks(
-    &self,
-    account_info: &AccountInfo
-) -> Result<(), Box<dyn std::error::Error>> {
-    event!(Level::INFO, "market-data streaming ticks");
+use std::env;
+use rithmic_rs::{
+    RithmicConnector,
+    connection_info::{AccountInfo, RithmicConnectionSystem},
+};
+use tracing::{Level, event};
 
-    let ticker_plant = RithmicTickerPlant::new(account_info).await;
-    let ticker_plant_handle = ticker_plant.get_handle();
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Before running this example, copy .env.blank to .env
+    // and fill in RITHMIC_ACCOUNT_ID, RITHMIC_PASSWORD, FCM_ID, and IB_ID
+    dotenv::dotenv().ok();
 
-    let mut min_backoff_wait = 1;
+    tracing_subscriber::fmt().init();
 
-    while let Err(err) = ticker_plant_handle.login().await {
-        event!(Level::ERROR, "market-data: login failed: {}", err);
+    let account_id = env::var("RITHMIC_ACCOUNT_ID")
+        .expect("RITHMIC_ACCOUNT_ID must be set in environment variables");
+    let password = env::var("RITHMIC_PASSWORD")
+        .expect("RITHMIC_PASSWORD must be set in environment variables");
+    let fcm_id = env::var("FCM_ID").expect("RITHMIC_FCM_ID must be set in environment variables");
+    let ib_id = env::var("IB_ID").expect("RITHMIC_IB_ID must be set in environment variables");
 
-        sleep(Duration::from_secs(min_backoff_wait)).await;
+    let account_info = AccountInfo {
+        account_id,
+        password,
+        env: RithmicConnectionSystem::Demo,
+        fcm_id,
+        ib_id,
+    };
 
-        min_backoff_wait *= 2;
+    let connector = RithmicConnector::new(account_info);
 
-        if min_backoff_wait > 60 {
-            event!(Level::ERROR, "market-data: login exceeded max backoff");
+    // Connect to the Rithmic system
+    connector.connect().await?;
+    connector.authenticate().await?;
 
-            panic!("market-data: login exceeded max backoff")
-        }
-    }
+    // Connect to the ticker plant
+    let ticker_handle = connector.connect_ticker().await?;
 
-    handle.subscribe("ESU5", "CME").await?;
+    // Login to the ticker plant
+    connector.login_ticker().await?;
+    event!(Level::INFO, "Logged into ticker plant");
 
-    loop {
-        let message = ticker_plant_handle.subscription_receiver.recv().await;
+    // The ticker_handle can now be used to send requests to the ticker plant
 
-        match message {
-            Ok(update) => {
-                match update.message {
-                    RithmicMessage::LastTrade(u) => {
-                        let tick = Tick {
-                            dir: u.aggressor.unwrap(),
-                            price: u.trade_price.unwrap(),
-                            vol: u.trade_size.unwrap(),
-                            utime: u.ssboe.unwrap() as i64 * 1_000_000 + u.usecs.unwrap() as i64
-                        };
+    // Disconnect from the Rithmic system
+    connector.disconnect().await?;
+    event!(Level::INFO, "Disconnected from Rithmic");
 
-                        if let Some(s) = self.stream_map.get(&u.symbol.unwrap()) {
-                            if let Err(e) = s.send(tick) {
-                                event!(Level::ERROR, "market-data: failed to send tick: {}", e);
-                            };
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            Err(RecvError::Lagged(count)) => {
-                event!(Level::WARN, "{} messages lagged", count);
-            }
-            Err(err) => {
-                event!(Level::ERROR, "received error {:?}", err);
-
-                break;
-            }
-        }
-    }
+    Ok(())
 }
 ```
 
-## Examples
+## How it Works
 
-The repository includes several examples to help you get started:
+The library is built around the `RithmicConnector`, which is the main entry point for interacting with the Rithmic API. The connector manages the connection state and provides access to different "plants".
 
-**Environment Variables**
+### Plants
 
-Before running examples, copy `.env.blank` to `.env` and fill in your credentials:
+A "plant" is a connection to a specific part of the Rithmic API. There are four types of plants:
+
+-   `TickerPlant`: For receiving real-time market data.
+-   `HistoryPlant`: For retrieving historical market data.
+-   `OrderPlant`: For managing orders.
+-   `PnlPlant`: For retrieving profit and loss information.
+
+You can connect to each plant individually using the `RithmicConnector`. Each plant has a corresponding "handle" (e.g., `RithmicTickerPlantHandle`) which you can use to send commands and subscribe to data streams.
+
+### Connection Flow
+
+1.  Create a `RithmicConnector` with your `AccountInfo`.
+2.  Call `connect()` to establish a connection to the Rithmic system.
+3.  Call `authenticate()` to authenticate the connection.
+4.  Connect to the desired plants using `connect_ticker()`, `connect_history()`, `connect_order()`, and `connect_pnl()`.
+5.  Login to each plant separately using `login_ticker()`, `login_history()`, etc.
+6.  Get a handle to the plant to send commands and receive data.
+7.  Call `disconnect()` to close all connections.
+
+## Running the Examples
+
+The `examples` directory contains several examples of how to use the library. To run them, you'll need to create a `.env` file in the `examples` directory with your Rithmic credentials. You can copy the `.env.blank` file to get started.
+
 ```bash
-cp examples/.env.blank .env
-# Edit .env with your Rithmic credentials
+cp examples/.env.blank examples/.env
 ```
 
-### Basic Connection
+Then, edit `examples/.env` with your Rithmic account ID, password, FCM ID, and IB ID.
+
+You can run the examples using `cargo run --example <example_name>`. For example:
+
 ```bash
 cargo run --example connect
 ```
-
-### Historical Data
-```bash
-# Load historical tick data
-cargo run --example load_historical_ticks
-
-# Load historical time bars (1-minute, 5-minute, daily)
-cargo run --example load_historical_bars
-```
-
-## Contribution
-
-Contributions encouraged and welcomed!
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
-dual licensed as above, without any additional terms or conditions.
-
-## License
-
-Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
-[MIT license](LICENSE-MIT) at your option.
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall
-be dual licensed as above, without any additional terms or conditions.

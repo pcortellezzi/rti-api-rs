@@ -1,160 +1,157 @@
-use async_trait::async_trait;
-use std::time::Duration;
-use tracing::{error, info, warn};
 use std::env;
-use anyhow::anyhow;
-
-use tokio::{
-    net::TcpStream,
-    time::{Instant, Interval, interval_at, sleep, timeout},
-};
-use base64::Engine;
-use base64::prelude::BASE64_STANDARD;
-use bytes::Bytes;
-use http::{Request, Uri};
-use http::header::PROXY_AUTHORIZATION;
-
-
-
+use futures_util::{SinkExt, StreamExt};
+use tokio::io::{AsyncWriteExt, AsyncBufReadExt, BufReader};
+use tokio::net::TcpStream;
 use tokio_tungstenite::{
-    MaybeTlsStream, WebSocketStream, connect_async_with_config,
-    tungstenite::{
-        Error, Message,
-        client::IntoClientRequest,
-    },
+    client_async,
+    tungstenite::{Message},
+    WebSocketStream,
 };
+use tokio_native_tls::{TlsConnector, TlsStream};
+use native_tls::TlsConnector as NativeTlsConnector;
+use tracing::{debug, info, error};
+use url::Url;
+use bytes::Bytes;
 
-/// Number of seconds between heartbeats sent to the server.
-pub const HEARTBEAT_SECS: u64 = 60;
+pub type RithmicStream = WebSocketStream<TlsStream<TcpStream>>;
 
-/// Connection attempt timeout in seconds.
-const CONNECT_TIMEOUT_SECS: u64 = 2;
+/// Connect to a Rithmic WebSocket endpoint with SSL/TLS, supporting system proxies.
+pub async fn connect(url: &str) -> Result<RithmicStream, anyhow::Error> {
+    let target_url = Url::parse(url)?;
+    let host = target_url.host_str().ok_or_else(|| anyhow::anyhow!("No host in URL"))?;
+    let port = target_url.port_or_known_default().ok_or_else(|| anyhow::anyhow!("No port in URL"))?;
+    
+    // 1. Detect Proxy
+    let proxy_url = get_proxy_url();
+    
+    let tcp_stream = if let Some(proxy) = proxy_url {
+        info!("Using Proxy: {}", proxy);
+        connect_via_proxy(&proxy, host, port).await?
+    } else {
+        info!("Connecting directly to {}:{}", host, port);
+        TcpStream::connect((host, port)).await?
+    };
 
-/// Base backoff in milliseconds multiplied by the attempt number.
-const BACKOFF_MS_BASE: u64 = 500;
+    // 2. TLS Handshake (Native Certs)
+    // NativeTlsConnector::new() uses OS trust store by default (SChannel on Windows)
+    let cx = NativeTlsConnector::new()?;
+    let cx = TlsConnector::from(cx);
 
-/// A generic stream over the Rithmic connection exposing a handle for external control.
-pub trait RithmicStream {
-    type Handle;
+    debug!("Starting TLS Handshake with {}", host);
+    // We must provide the domain name for SNI
+    let tls_stream = cx.connect(host, tcp_stream).await.map_err(|e| {
+        error!("TLS Handshake failed: {}", e);
+        anyhow::anyhow!("TLS Handshake failed: {}", e)
+    })?;
 
-    fn get_handle(&self) -> Self::Handle;
+    // 3. WebSocket Handshake
+    debug!("Starting WebSocket Handshake");
+    let (ws_stream, _) = client_async(url, tls_stream).await.map_err(|e| {
+        error!("WebSocket Handshake failed: {}", e);
+        anyhow::anyhow!("WebSocket Handshake failed: {}", e)
+    })?;
+
+    info!("Connected to Rithmic WS: {}", url);
+    Ok(ws_stream)
 }
 
-#[async_trait]
-pub trait PlantActor {
-    type Command;
-
-    async fn run(&mut self);
-    async fn handle_command(&mut self, command: Self::Command);
-    async fn handle_rithmic_message(&mut self, message: Result<Message, Error>)
-    -> Result<bool, ()>;
+/// Helper to send bytes
+pub async fn send_bytes(stream: &mut RithmicStream, data: Vec<u8>) -> Result<(), anyhow::Error> {
+    stream.send(Message::Binary(Bytes::from(data))).await.map_err(|e| e.into())
 }
 
-pub fn get_heartbeat_interval(override_secs: Option<u64>) -> Interval {
-    let secs = override_secs.unwrap_or(HEARTBEAT_SECS);
-    let heartbeat_interval = Duration::from_secs(secs);
-    let start_offset = Instant::now() + heartbeat_interval;
-
-    interval_at(start_offset, heartbeat_interval)
-}
-
-/// Sometimes the connection gets stuck and retrying seems to help.
-///
-/// Arguments:
-/// * `primary_url`: Primary URL to connect to first
-/// * `secondary_url`: Beta URL to alternate with after the first failure
-/// * `max_attempts`: Total number of attempts to connect
-///
-/// Returns:
-/// * `Ok`: A WebSocketStream if the connection is successful.
-/// * `Err`: An error if the connection fails after the specified number of attempts.
-pub async fn connect_with_retry(
-    primary_url: &str,
-    secondary_url: &str,
-    max_attempts: u32,
-) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Error> {
-    for attempt in 1..=max_attempts {
-        let selected_url = if attempt == 1 {
-            primary_url
-        } else if attempt % 2 == 0 {
-            secondary_url
-        } else {
-            primary_url
-        };
-
-        info!("Attempt {}: connecting to {}", attempt, selected_url);
-
-        match timeout(
-            Duration::from_secs(CONNECT_TIMEOUT_SECS),
-            connect_async_with_config(selected_url, None, true),
-        )
-        .await
-        {
-            Ok(Ok((ws_stream, _))) => return Ok(ws_stream),
-            Ok(Err(e)) => warn!("connect_async failed for {}: {:?}", selected_url, e),
-            Err(e) => warn!("connect_async to {} timed out: {:?}", selected_url, e),
+/// Helper to receive bytes
+pub async fn receive_bytes(stream: &mut RithmicStream) -> Result<Option<Vec<u8>>, anyhow::Error> {
+    match stream.next().await {
+        Some(Ok(Message::Binary(data))) => Ok(Some(data.to_vec())),
+        Some(Ok(Message::Ping(_))) => {
+            debug!("Received Ping");
+            Ok(None)
         }
-
-        if attempt < max_attempts {
-            let backoff_ms: u64 = BACKOFF_MS_BASE * attempt as u64;
-
-            info!("Backing off for {}ms before retry", backoff_ms,);
-
-            sleep(Duration::from_millis(backoff_ms)).await;
+        Some(Ok(Message::Pong(_))) => {
+            debug!("Received Pong");
+            Ok(None)
         }
+        Some(Ok(Message::Close(_))) => {
+            info!("Connection closed by server");
+            Ok(None) // End of stream
+        }
+        Some(Err(e)) => Err(e.into()),
+        None => Ok(None), // Stream ended
+        _ => Ok(None), // Text messages or others we ignore
     }
-
-    error!("max connection attempts reached");
-
-    Err(Error::Io(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "max connection attempts reached",
-    )))
 }
 
-pub async fn connect(url: &str) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, anyhow::Error> {
-    let ws_uri: Uri = url.parse()?;
+// --- Proxy Logic ---
 
-    if let Ok(proxy_url_str) = env::var("HTTPS_PROXY") {
-        let proxy_uri: hyper::Uri = proxy_url_str.parse()?;
-
-        // Établir une connexion TCP avec le proxy
-        let stream = hyper_util::rt::TokioIo::new(TcpStream::connect(format!("{}:{}", proxy_uri.host().unwrap_or_default(), proxy_uri.port_u16().unwrap_or(80))).await?);
-
-        let (mut request_sender, conn) = hyper::client::conn::http1::handshake(stream).await?;
-        let conn = tokio::spawn(conn.without_shutdown());
-
-        let mut request_builder = Request::connect(format!("{}:{}", ws_uri.host().unwrap_or_default(), ws_uri.port_u16().unwrap_or(443)));
-        // Ajoute l'authentification si présente dans l'URL du proxy
-        if let Some(auth) = proxy_uri.authority() {
-            if let Some((username, password)) = auth.as_str().split_once('@') {
-                let credentials = format!("{}:{}", username, password.splitn(2, ':').next().unwrap_or(""));
-                let auth = format!("Basic {}", BASE64_STANDARD.encode(credentials));
-                request_builder = request_builder.header(PROXY_AUTHORIZATION, auth);
+fn get_proxy_url() -> Option<Url> {
+    // Check common env vars
+    let vars = ["HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"];
+    
+    for var in vars {
+        if let Ok(val) = env::var(var) {
+            if !val.is_empty() {
+                return Url::parse(&val).ok();
             }
         }
-        let request = request_builder.body(http_body_util::Empty::<Bytes>::new())?;
-
-        let res = request_sender.send_request(request).await?;
-
-        if !res.status().is_success() {
-            return Err(anyhow!(
-                "The proxy server returned an error response: status code: {}, body: {:#?}",
-                res.status(),
-                res.body()
-            ));
-        }
-
-        let tcp = conn.await
-            .map_err(|e| anyhow!(e))??
-            .io
-            .into_inner();
-
-        // CryptoProvider::install_default();
-        let ws_stream = tokio_tungstenite::client_async_tls(ws_uri.into_client_request()?, tcp).await?.0;
-        Ok(ws_stream)
-    } else {
-        let ws_stream = tokio_tungstenite::connect_async(ws_uri.into_client_request()?).await?.0;
-        Ok(ws_stream)
     }
+    None
+}
+
+async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16) -> Result<TcpStream, anyhow::Error> {
+    let proxy_host = proxy_url.host_str().ok_or_else(|| anyhow::anyhow!("Invalid proxy host"))?;
+    let proxy_port = proxy_url.port_or_known_default().unwrap_or(8080);
+
+    debug!("Connecting to proxy at {}:{}", proxy_host, proxy_port);
+    let stream = TcpStream::connect((proxy_host, proxy_port)).await?;
+    
+    // Use BufReader to read line by line
+    let mut reader = BufReader::new(stream);
+
+    // Build CONNECT request
+    let mut connect_req = format!(
+        "CONNECT {}:{} HTTP/1.1\r\nHost: {}:{}\r\n",
+        target_host, target_port, target_host, target_port
+    );
+
+    // Proxy Auth
+    if !proxy_url.username().is_empty() {
+        let auth = format!("{}:{}", proxy_url.username(), proxy_url.password().unwrap_or(""));
+        use base64::{Engine as _, engine::general_purpose};
+        let encoded = general_purpose::STANDARD.encode(auth);
+        connect_req.push_str(&format!("Proxy-Authorization: Basic {}\
+\n", encoded));
+    }
+
+    connect_req.push_str("\r\n");
+
+    debug!("Sending CONNECT request to proxy");
+    reader.write_all(connect_req.as_bytes()).await?;
+    reader.flush().await?;
+
+    // Read Response Headers
+    let mut line = String::new();
+    
+    // Read Status Line
+    reader.read_line(&mut line).await?;
+    if !line.starts_with("HTTP/1.1 200") && !line.starts_with("HTTP/1.0 200") {
+        return Err(anyhow::anyhow!("Proxy handshake failed: {}", line.trim()));
+    }
+    
+    // Read until empty line
+    loop {
+        line.clear();
+        reader.read_line(&mut line).await?;
+        if line == "\r\n" || line == "\n" {
+            break;
+        }
+        if line.is_empty() {
+            // EOF before end of headers
+            return Err(anyhow::anyhow!("Proxy closed connection during handshake"));
+        }
+    }
+
+    debug!("Proxy tunnel established");
+    // Unwrap the stream from BufReader to return raw TcpStream
+    Ok(reader.into_inner())
 }

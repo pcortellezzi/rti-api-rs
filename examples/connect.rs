@@ -3,41 +3,48 @@ use std::env;
 use tracing::{Level, event};
 
 use rithmic_rs::{
-    RithmicTickerPlant,
+    RithmicConnector,
     connection_info::{AccountInfo, RithmicConnectionSystem},
-    ws::RithmicStream,
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Before running this example, copy .env.blank to .env
-    // and fill in RITHMIC_ACCOUNT_ID, FCM_ID, and IB_ID
+    // and fill in RITHMIC_ACCOUNT_ID, RITHMIC_PASSWORD, FCM_ID, and IB_ID
     dotenv::dotenv().ok();
 
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt::init();
 
     let account_id = env::var("RITHMIC_ACCOUNT_ID")
         .expect("RITHMIC_ACCOUNT_ID must be set in environment variables");
-
-    let fcm_id = env::var("FCM_ID").expect("RITHMIC_FCM_ID must be set in environment variables");
-    let ib_id = env::var("IB_ID").expect("RITHMIC_IB_ID must be set in environment variables");
+    let password = env::var("RITHMIC_PASSWORD")
+        .expect("RITHMIC_PASSWORD must be set in environment variables");
+    let fcm_id = env::var("FCM_ID").expect("FCM_ID must be set in environment variables");
+    let ib_id = env::var("IB_ID").expect("IB_ID must be set in environment variables");
 
     let account_info = AccountInfo {
         account_id,
+        password,
         env: RithmicConnectionSystem::Demo,
         fcm_id,
         ib_id,
     };
 
-    let ticker_plant = RithmicTickerPlant::new(&account_info).await;
-    let ticker_plant_handle = ticker_plant.get_handle();
+    let connector = RithmicConnector::new(account_info);
 
-    let resp = ticker_plant_handle.login().await;
+    // Connect to the Rithmic system
+    connector.connect().await?;
+    connector.authenticate().await?;
 
-    event!(Level::INFO, "Login response: {:#?}", resp);
+    // Connect to the ticker plant
+    let ticker_handle = connector.connect_ticker().await?;
 
-    ticker_plant_handle.disconnect().await?;
+    // Login to the ticker plant
+    let login_resp = ticker_handle.login().await?;
+    event!(Level::INFO, "Logged into ticker plant: {:?}", login_resp);
 
+    // Disconnect from the Rithmic system
+    connector.disconnect().await?;
     event!(Level::INFO, "Disconnected from Rithmic");
 
     Ok(())

@@ -3,53 +3,66 @@ use std::env;
 use tracing::{Level, event, info};
 
 use rithmic_rs::{
-    RithmicTickerPlant,
+    RithmicConnector,
     connection_info::{AccountInfo, RithmicConnectionSystem},
+    api::request_market_data_update::UpdateBits,
     rti::messages::RithmicMessage,
-    rti::request_market_data_update::UpdateBits,
-    ws::RithmicStream,
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Before running this example, copy .env.blank to .env
-    // and fill in RITHMIC_ACCOUNT_ID, FCM_ID, and IB_ID
+    // and fill in RITHMIC_ACCOUNT_ID, RITHMIC_PASSWORD, FCM_ID, and IB_ID
     dotenv::dotenv().ok();
 
     tracing_subscriber::fmt().init();
 
     let account_id = env::var("RITHMIC_ACCOUNT_ID")
         .expect("RITHMIC_ACCOUNT_ID must be set in environment variables");
-
-    let fcm_id = env::var("FCM_ID").expect("RITHMIC_FCM_ID must be set in environment variables");
-    let ib_id = env::var("IB_ID").expect("RITHMIC_IB_ID must be set in environment variables");
+    let password = env::var("RITHMIC_PASSWORD")
+        .expect("RITHMIC_PASSWORD must be set in environment variables");
+    let fcm_id = env::var("FCM_ID").expect("FCM_ID must be set in environment variables");
+    let ib_id = env::var("IB_ID").expect("IB_ID must be set in environment variables");
 
     let account_info = AccountInfo {
         account_id,
+        password,
         env: RithmicConnectionSystem::Demo,
         fcm_id,
         ib_id,
     };
 
+    let connector = RithmicConnector::new(account_info);
+
+    // Connect to the Rithmic system
+    connector.connect().await?;
+    connector.authenticate().await?;
+    event!(Level::INFO, "Connected and Authenticated with Rithmic");
+
+    // Connect to the ticker plant
+    let ticker_handle = connector.connect_ticker().await?;
+    event!(Level::INFO, "Connected to Ticker Plant");
+
+    // Login to the ticker plant
+    ticker_handle.login().await?;
+    event!(Level::INFO, "Logged into Ticker Plant");
+
     // Symbol and exchange can be customized here
     let symbol = env::var("SYMBOL").unwrap_or_else(|_| "ZNU5".to_string());
     let exchange = env::var("EXCHANGE").unwrap_or_else(|_| "CBOT".to_string());
 
-    let ticker_plant = RithmicTickerPlant::new(&account_info).await;
-    let mut handle = ticker_plant.get_handle();
-
-    handle.login().await?;
-
     info!("Subscribing to market data for {} on {}", symbol, exchange);
 
-    let _ = handle.subscribe(&symbol, &exchange, vec![UpdateBits::LastTrade, UpdateBits::Bbo]).await?;
+    let _ = ticker_handle.subscribe(&symbol, &exchange, vec![UpdateBits::LastTrade, UpdateBits::Bbo]).await?;
+
+    let mut subscription_receiver = ticker_handle.subscribe_updates();
 
     // Process a handful of updates, then exit
     let mut processed = 0usize;
     let max_updates = 100usize;
 
     while processed < max_updates {
-        match handle.subscription_receiver.recv().await {
+        match subscription_receiver.recv().await {
             Ok(update) => match update.message {
                 RithmicMessage::LastTrade(t) => {
                     let price = t.trade_price.unwrap_or(0.0);
@@ -81,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    handle.disconnect().await?;
+    connector.disconnect().await?;
 
     info!("Disconnected from Rithmic");
 

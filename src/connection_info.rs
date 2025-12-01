@@ -2,12 +2,12 @@ use dotenv::dotenv;
 use std::{env, fmt, str::FromStr};
 
 #[derive(Clone, Debug)]
-pub struct RithmicConnectionInfo {
-    pub url: String,
-    pub beta_url: String,
+pub struct RithmicCredentials {
     pub user: String,
     pub password: String,
     pub system_name: String,
+    pub gateway_name: String,
+    pub direct_gateway_url: Option<String>, // Bypass discovery if set
 }
 
 #[derive(Clone, Debug)]
@@ -40,30 +40,31 @@ impl FromStr for RithmicConnectionSystem {
     }
 }
 
-pub fn get_config(env: &RithmicConnectionSystem) -> RithmicConnectionInfo {
+pub fn get_credentials_from_env(env_type: &RithmicConnectionSystem) -> RithmicCredentials {
     dotenv().ok();
 
-    match env {
-        RithmicConnectionSystem::Demo => RithmicConnectionInfo {
-            url: "wss://rprotocol.rithmic.com:443".into(),
-            beta_url: "wss://rprotocol-beta.rithmic.com:443".into(),
-            user: env::var("RITHMIC_DEMO_USER").unwrap(),
-            password: env::var("RITHMIC_DEMO_PW").unwrap(),
+    match env_type {
+        RithmicConnectionSystem::Demo => RithmicCredentials {
+            user: env::var("RITHMIC_DEMO_USER").expect("RITHMIC_DEMO_USER not set"),
+            password: env::var("RITHMIC_DEMO_PW").expect("RITHMIC_DEMO_PW not set"),
             system_name: "Rithmic Paper Trading".into(),
+            gateway_name: "Chicago Area".into(),
+            direct_gateway_url: None,
         },
-        RithmicConnectionSystem::Live => RithmicConnectionInfo {
-            url: "wss://rprotocol.rithmic.com:443".into(),
-            beta_url: "wss://rprotocol-beta.rithmic.com:443".into(),
-            user: env::var("RITHMIC_LIVE_USER").unwrap(),
-            password: env::var("RITHMIC_LIVE_PW").unwrap(),
+        RithmicConnectionSystem::Live => RithmicCredentials {
+            user: env::var("RITHMIC_LIVE_USER").expect("RITHMIC_LIVE_USER not set"),
+            password: env::var("RITHMIC_LIVE_PW").expect("RITHMIC_LIVE_PW not set"),
             system_name: "Rithmic 01".into(),
+            gateway_name: "Chicago Area".into(),
+            direct_gateway_url: None,
         },
-        RithmicConnectionSystem::Test => RithmicConnectionInfo {
-            url: "wss://rituz00100.rithmic.com:443".into(),
-            beta_url: "wss://rprotocol-beta.rithmic.com:443".into(),
-            user: env::var("RITHMIC_TEST_USER").unwrap(),
-            password: env::var("RITHMIC_TEST_PW").unwrap(),
+        RithmicConnectionSystem::Test => RithmicCredentials {
+            user: env::var("RITHMIC_TEST_USER").expect("RITHMIC_TEST_USER not set"),
+            password: env::var("RITHMIC_TEST_PW").expect("RITHMIC_TEST_PW not set"),
             system_name: "Rithmic Test".into(),
+            gateway_name: "Test Gateway".into(),
+            // Hardcoded Test URL as per user request
+            direct_gateway_url: Some("wss://rituz00100.rithmic.com:443".into()),
         },
     }
 }
@@ -71,18 +72,20 @@ pub fn get_config(env: &RithmicConnectionSystem) -> RithmicConnectionInfo {
 #[derive(Clone, Debug)]
 pub struct AccountInfo {
     pub account_id: String,
-    pub env: RithmicConnectionSystem,
     pub fcm_id: String,
     pub ib_id: String,
+    pub user_type: i32,
 }
 
 impl Default for AccountInfo {
     fn default() -> Self {
         AccountInfo {
             account_id: "".to_string(),
-            env: RithmicConnectionSystem::Live,
             fcm_id: "".to_string(),
             ib_id: "".to_string(),
+            user_type: 3,
         }
     }
 }
+
+pub const BOOTSTRAP_URL: &str = "wss://rprotocol.rithmic.com:443";
