@@ -1,3 +1,8 @@
 pub mod messages;
 
-include!(concat!(env!("OUT_DIR"), "/rti.rs"));
+#[allow(clippy::all, clippy::pedantic)]
+mod generated {
+    include!(concat!(env!("OUT_DIR"), "/rti.rs"));
+}
+
+pub use generated::*;

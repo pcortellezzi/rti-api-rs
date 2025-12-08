@@ -90,4 +90,5 @@ pub enum RithmicMessage {
     TradeStatistics(TradeStatistics),
     QuoteStatistics(QuoteStatistics),
     UpdateEasyToBorrowList(UpdateEasyToBorrowList),
+    UserAccountUpdate(UserAccountUpdate),
 }

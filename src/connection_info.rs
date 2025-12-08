@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use std::{env, fmt, str::FromStr};
+use std::env;
 
 #[derive(Clone, Debug)]
 pub struct RithmicCredentials {
@@ -10,63 +10,53 @@ pub struct RithmicCredentials {
     pub direct_gateway_url: Option<String>, // Bypass discovery if set
 }
 
-#[derive(Clone, Debug)]
-pub enum RithmicConnectionSystem {
-    Demo,
-    Live,
-    Test,
-}
-
-impl fmt::Display for RithmicConnectionSystem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            RithmicConnectionSystem::Demo => write!(f, "demo"),
-            RithmicConnectionSystem::Live => write!(f, "live"),
-            RithmicConnectionSystem::Test => write!(f, "test"),
+impl RithmicCredentials {
+    /// Create new credentials manually.
+    pub fn new(user: impl Into<String>, password: impl Into<String>, system_name: impl Into<String>, gateway_name: impl Into<String>) -> Self {
+        Self {
+            user: user.into(),
+            password: password.into(),
+            system_name: system_name.into(),
+            gateway_name: gateway_name.into(),
+            direct_gateway_url: None,
         }
+    }
+
+    /// Set a direct gateway URL to bypass the discovery process.
+    pub fn with_direct_url(mut self, url: impl Into<String>) -> Self {
+        self.direct_gateway_url = Some(url.into());
+        self
     }
 }
 
-impl FromStr for RithmicConnectionSystem {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "demo" | "development" => Ok(RithmicConnectionSystem::Demo),
-            "live" | "production" => Ok(RithmicConnectionSystem::Live),
-            "test" => Ok(RithmicConnectionSystem::Test),
-            _ => Err(()),
-        }
-    }
-}
-
-pub fn get_credentials_from_env(env_type: &RithmicConnectionSystem) -> RithmicCredentials {
+/// Helper to load credentials from standard environment variables via `.env`.
+///
+/// Takes an optional `env_suffix`.
+/// - If `None`, looks for `RITHMIC_USER`, `RITHMIC_PASSWORD`, etc.
+/// - If `Some("TEST")`, looks for `RITHMIC_USER_TEST`, `RITHMIC_PASSWORD_TEST`, etc.
+pub fn get_credentials_from_env(env_suffix: Option<&str>) -> Result<RithmicCredentials, env::VarError> {
     dotenv().ok();
 
-    match env_type {
-        RithmicConnectionSystem::Demo => RithmicCredentials {
-            user: env::var("RITHMIC_DEMO_USER").expect("RITHMIC_DEMO_USER not set"),
-            password: env::var("RITHMIC_DEMO_PW").expect("RITHMIC_DEMO_PW not set"),
-            system_name: "Rithmic Paper Trading".into(),
-            gateway_name: "Chicago Area".into(),
-            direct_gateway_url: None,
-        },
-        RithmicConnectionSystem::Live => RithmicCredentials {
-            user: env::var("RITHMIC_LIVE_USER").expect("RITHMIC_LIVE_USER not set"),
-            password: env::var("RITHMIC_LIVE_PW").expect("RITHMIC_LIVE_PW not set"),
-            system_name: "Rithmic 01".into(),
-            gateway_name: "Chicago Area".into(),
-            direct_gateway_url: None,
-        },
-        RithmicConnectionSystem::Test => RithmicCredentials {
-            user: env::var("RITHMIC_TEST_USER").expect("RITHMIC_TEST_USER not set"),
-            password: env::var("RITHMIC_TEST_PW").expect("RITHMIC_TEST_PW not set"),
-            system_name: "Rithmic Test".into(),
-            gateway_name: "Test Gateway".into(),
-            // Hardcoded Test URL as per user request
-            direct_gateway_url: Some("wss://rituz00100.rithmic.com:443".into()),
-        },
-    }
+    let get_key = |base: &str| -> String {
+        match env_suffix {
+            Some(suffix) if !suffix.is_empty() => format!("{}_{}", base, suffix.to_uppercase()),
+            _ => base.to_string(),
+        }
+    };
+
+    let user = env::var(get_key("RITHMIC_USER"))?;
+    let password = env::var(get_key("RITHMIC_PASSWORD"))?;
+    let system_name = env::var(get_key("RITHMIC_SYSTEM_NAME"))?;
+    let gateway_name = env::var(get_key("RITHMIC_GATEWAY_NAME"))?;
+    let direct_gateway_url = env::var(get_key("RITHMIC_DIRECT_URL")).ok();
+
+    Ok(RithmicCredentials {
+        user,
+        password,
+        system_name,
+        gateway_name,
+        direct_gateway_url,
+    })
 }
 
 #[derive(Clone, Debug)]

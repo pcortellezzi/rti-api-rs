@@ -1,4 +1,4 @@
-use rithmic_rs::{RithmicClient, connection_info::{RithmicConnectionSystem, get_credentials_from_env}, RithmicMessage};
+use rithmic_rs::{RithmicClient, connection_info::get_credentials_from_env, RithmicMessage};
 use dotenv::dotenv;
 use tokio::signal;
 
@@ -8,8 +8,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt::init();
 
     // 1. Get credentials from env (User, Pass, System, Gateway)
-    let env_type = RithmicConnectionSystem::Demo; // Change to Live or Demo as needed
-    let credentials = get_credentials_from_env(&env_type);
+    let credentials = get_credentials_from_env(None)?;
 
     println!("Connecting to Rithmic via {}...", credentials.gateway_name);
     let mut client = RithmicClient::new(credentials);
@@ -33,7 +32,7 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("Connected! Subscribing to ESZ5 (CME)...");
     
     // 3. Subscribe
-    client.subscribe_market_data("ESZ5", "CME").await?;
+    client.subscribe_market_data("ESZ5", "CME", None).await?;
     
     println!("Subscribed. Waiting for data (Press Ctrl+C to stop)...");
 

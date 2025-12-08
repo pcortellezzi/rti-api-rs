@@ -9,19 +9,86 @@ use crate::{
         request_market_data_update::{Request, UpdateBits},
         request_tick_bar_replay::{BarSubType, BarType, Direction, TimeOrder},
         request_time_bar_replay,
-        request_search_symbols::InstrumentType, // Needed
-        request_search_symbols::Pattern,        // Needed
+        request_search_symbols::InstrumentType,
+        request_search_symbols::Pattern,
+        request_new_order::{TransactionType, PriceType, Duration},
+        request_bracket_order::BracketType,
     },
 };
-
 
 pub const TRADE_ROUTE_LIVE: &str = "globex";
 pub const TRADE_ROUTE_DEMO: &str = "simulator";
 pub const USER_TYPE: i32 = 3;
 
+/// Parameters for submitting a standard new order
+#[derive(Debug, Clone)]
+pub struct OrderParams {
+    pub symbol: String,
+    pub exchange: String,
+    pub quantity: i32,
+    pub price: f64,
+    pub transaction_type: TransactionType,
+    pub price_type: PriceType,
+    pub duration: Duration,
+    pub user_tag: Option<String>,
+}
+
+/// Parameters for modifying an existing order
+#[derive(Debug, Clone)]
+pub struct ModifyOrderParams {
+    pub basket_id: String,
+    pub symbol: String,
+    pub exchange: String,
+    pub quantity: i32,
+    pub price: f64,
+    pub price_type: PriceType,
+}
+
+/// Parameters for a Bracket Order (Entry + Take Profit + Stop Loss)
+#[derive(Debug, Clone)]
+pub struct BracketOrderParams {
+    pub symbol: String,
+    pub exchange: String,
+    pub quantity: i32,
+    pub price: f64,
+    pub transaction_type: TransactionType,
+    pub price_type: PriceType,
+    pub duration: Duration,
+    pub bracket_type: BracketType,
+    pub target_ticks: Option<i32>,
+    pub stop_ticks: Option<i32>,
+    pub user_tag: Option<String>,
+}
+
+/// Parameters for one leg of an OCO order
+#[derive(Debug, Clone)]
+pub struct OcoLegParams {
+    pub symbol: String,
+    pub exchange: String,
+    pub quantity: i32,
+    pub price: f64,
+    pub transaction_type: TransactionType,
+    pub price_type: PriceType,
+}
+
+/// Parameters for an OCO (One-Cancels-Other) Order
+#[derive(Debug, Clone)]
+pub struct OcoOrderParams {
+    pub leg1: OcoLegParams,
+    pub leg2: OcoLegParams,
+    pub duration: Duration,
+    pub user_tag: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct RithmicSenderApi {
     message_id_counter: u64,
+}
+
+impl Default for RithmicSenderApi {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RithmicSenderApi {
@@ -169,6 +236,200 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    pub fn request_get_instrument_by_underlying(
+        &mut self,
+        underlying_symbol: &str,
+        exchange: &str,
+        expiration_date: Option<&str>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestGetInstrumentByUnderlying {
+            template_id: 102,
+            user_msg: vec![id.clone()],
+            underlying_symbol: Some(underlying_symbol.into()),
+            exchange: Some(exchange.into()),
+            expiration_date: expiration_date.map(|s| s.into()),
+            ..RequestGetInstrumentByUnderlying::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_market_data_update_by_underlying(
+        &mut self,
+        underlying_symbol: &str,
+        exchange: &str,
+        expiration_date: Option<&str>,
+        fields: Vec<request_market_data_update_by_underlying::UpdateBits>,
+        request_type: request_market_data_update_by_underlying::Request,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let mut req = RequestMarketDataUpdateByUnderlying {
+            template_id: 105,
+            user_msg: vec![id.clone()],
+            ..RequestMarketDataUpdateByUnderlying::default()
+        };
+
+        let mut bits = 0;
+        for field in fields {
+            bits |= field as u32;
+        }
+
+        req.underlying_symbol = Some(underlying_symbol.into());
+        req.exchange = Some(exchange.into());
+        req.expiration_date = expiration_date.map(|s| s.into());
+        req.request = Some(request_type.into());
+        req.update_bits = Some(bits);
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_give_tick_size_type_table(
+        &mut self,
+        tick_size_type: Option<&str>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestGiveTickSizeTypeTable {
+            template_id: 107,
+            user_msg: vec![id.clone()],
+            tick_size_type: tick_size_type.map(|s| s.into()),
+            ..RequestGiveTickSizeTypeTable::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_product_codes(
+        &mut self,
+        exchange: Option<&str>,
+        give_toi_products_only: Option<bool>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestProductCodes {
+            template_id: 111,
+            user_msg: vec![id.clone()],
+            exchange: exchange.map(|s| s.into()),
+            give_toi_products_only: give_toi_products_only,
+            ..RequestProductCodes::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_depth_by_order_snapshot(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+        depth_price: Option<f64>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestDepthByOrderSnapshot {
+            template_id: 115,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            depth_price: depth_price,
+            ..RequestDepthByOrderSnapshot::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_depth_by_order_updates(
+        &mut self,
+        request_type: request_depth_by_order_updates::Request,
+        symbol: &str,
+        exchange: &str,
+        depth_price: Option<f64>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestDepthByOrderUpdates {
+            template_id: 117,
+            user_msg: vec![id.clone()],
+            request: Some(request_type.into()),
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            depth_price: depth_price,
+            ..RequestDepthByOrderUpdates::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_get_volume_at_price(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestGetVolumeAtPrice {
+            template_id: 119,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            ..RequestGetVolumeAtPrice::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_auxilliary_reference_data(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestAuxilliaryReferenceData {
+            template_id: 121,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            ..RequestAuxilliaryReferenceData::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_reference_data(&mut self, symbol: &str, exchange: &str) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestReferenceData {
+            template_id: 14,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_front_month_contract(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+        subscribe: bool
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestFrontMonthContract {
+            template_id: 113,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            need_updates: Some(subscribe),
+        };
+
+        self.request_to_buf(req, id)
+    }
+
     // --- History ---
 
     pub fn request_tick_bar_replay(
@@ -226,7 +487,119 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    pub fn request_time_bar_update(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+        request_type: request_time_bar_update::Request,
+        bar_type: request_time_bar_update::BarType,
+        bar_type_period: i32,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestTimeBarUpdate {
+            template_id: 200,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            request: Some(request_type.into()),
+            bar_type: Some(bar_type.into()),
+            bar_type_period: Some(bar_type_period),
+            ..RequestTimeBarUpdate::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_tick_bar_update(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+        request_type: request_tick_bar_update::Request,
+        bar_type: request_tick_bar_update::BarType,
+        bar_sub_type: request_tick_bar_update::BarSubType,
+        bar_type_specifier: Option<&str>,
+        custom_session_open_ssm: Option<i32>,
+        custom_session_close_ssm: Option<i32>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestTickBarUpdate {
+            template_id: 204,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            request: Some(request_type.into()),
+            bar_type: Some(bar_type.into()),
+            bar_sub_type: Some(bar_sub_type.into()),
+            bar_type_specifier: bar_type_specifier.map(|s| s.into()),
+            custom_session_open_ssm: custom_session_open_ssm,
+            custom_session_close_ssm: custom_session_close_ssm,
+            ..RequestTickBarUpdate::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_volume_profile_minute_bars(
+        &mut self,
+        symbol: &str,
+        exchange: &str,
+        bar_type_period: i32,
+        start_index: i32,
+        finish_index: i32,
+        user_max_count: Option<i32>,
+        resume_bars: Option<bool>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestVolumeProfileMinuteBars {
+            template_id: 208,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            bar_type_period: Some(bar_type_period),
+            start_index: Some(start_index),
+            finish_index: Some(finish_index),
+            user_max_count: user_max_count,
+            resume_bars: resume_bars,
+            ..RequestVolumeProfileMinuteBars::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_resume_bars(
+        &mut self,
+        request_key: &str,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestResumeBars {
+            template_id: 210,
+            user_msg: vec![id.clone()],
+            request_key: Some(request_key.into()),
+            ..RequestResumeBars::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
     // --- Order Management ---
+
+    pub fn request_login_info(&mut self) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestLoginInfo {
+            template_id: 300,
+            user_msg: vec![id.clone()],
+            ..RequestLoginInfo::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
 
     pub fn request_account_list(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
@@ -237,6 +610,40 @@ impl RithmicSenderApi {
             ib_id: Some(account.ib_id.clone()),
             user_type: Some(UserType::Trader.into()),
             user_msg: vec![id.clone()],
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_account_rms_info(
+        &mut self,
+        account: &AccountInfo,
+        user_type: request_account_rms_info::UserType,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestAccountRmsInfo {
+            template_id: 304,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            user_type: Some(user_type.into()),
+            ..RequestAccountRmsInfo::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_product_rms_info(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestProductRmsInfo {
+            template_id: 306,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            ..RequestProductRmsInfo::default()
         };
 
         self.request_to_buf(req, id)
@@ -258,6 +665,7 @@ impl RithmicSenderApi {
     
     pub fn request_trade_routes(&mut self) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
+        #[allow(clippy::needless_update)]
         let req = RequestTradeRoutes {
             template_id: 310,
             user_msg: vec![id.clone()],
@@ -267,17 +675,11 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn request_new_order(
         &mut self,
         account: &AccountInfo,
-        exchange: &str,
-        symbol: &str,
-        qty: i32,
-        price: f64,
-        action: request_new_order::TransactionType,
-        ordertype: request_new_order::PriceType,
-        duration: request_new_order::Duration, // Added param
-        localid: &str,
+        params: OrderParams,
         trade_route: &str,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
@@ -288,31 +690,27 @@ impl RithmicSenderApi {
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
             trade_route: Some(trade_route.into()),
-            exchange: Some(exchange.into()),
-            symbol: Some(symbol.into()),
-            quantity: Some(qty),
-            price: Some(price),
-            transaction_type: Some(action.into()),
-            price_type: Some(ordertype.into()),
-            duration: Some(duration.into()), // Use param
+            exchange: Some(params.exchange),
+            symbol: Some(params.symbol),
+            quantity: Some(params.quantity),
+            price: Some(params.price),
+            transaction_type: Some(params.transaction_type.into()),
+            price_type: Some(params.price_type.into()),
+            duration: Some(params.duration.into()),
             manual_or_auto: Some(2),
             user_msg: vec![id.clone()],
-            user_tag: Some(localid.into()),
+            user_tag: params.user_tag,
             ..RequestNewOrder::default()
         };
 
         self.request_to_buf(req, id)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn request_modify_order(
         &mut self,
         account: &AccountInfo,
-        basket_id: &str, // Order ID
-        exchange: &str,
-        symbol: &str,
-        qty: i32,
-        price: f64,
-        ordertype: request_new_order::PriceType, 
+        params: ModifyOrderParams
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -321,12 +719,12 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            basket_id: Some(basket_id.into()),
-            exchange: Some(exchange.into()),
-            symbol: Some(symbol.into()),
-            quantity: Some(qty),
-            price: Some(price),
-            price_type: Some(ordertype.into()),
+            basket_id: Some(params.basket_id),
+            exchange: Some(params.exchange),
+            symbol: Some(params.symbol),
+            quantity: Some(params.quantity),
+            price: Some(params.price),
+            price_type: Some(params.price_type.into()),
             manual_or_auto: Some(2),
             user_msg: vec![id.clone()],
             ..RequestModifyOrder::default()
@@ -351,6 +749,18 @@ impl RithmicSenderApi {
             manual_or_auto: Some(2),
             user_msg: vec![id.clone()],
             ..RequestCancelOrder::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_show_order_history_dates(&mut self) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestShowOrderHistoryDates {
+            template_id: 318,
+            user_msg: vec![id.clone()],
+            ..RequestShowOrderHistoryDates::default()
         };
 
         self.request_to_buf(req, id)
@@ -381,6 +791,517 @@ impl RithmicSenderApi {
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
             user_msg: vec![id.clone()],
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_show_order_history(
+        &mut self,
+        account: &AccountInfo,
+        basket_id: Option<&str>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestShowOrderHistory {
+            template_id: 322,
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            user_msg: vec![id.clone()],
+            basket_id: basket_id.map(|s| s.into()),
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_show_order_history_summary(
+        &mut self,
+        account: &AccountInfo,
+        date: &str,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestShowOrderHistorySummary {
+            template_id: 324,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            date: Some(date.into()),
+            ..RequestShowOrderHistorySummary::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_show_order_history_detail(
+        &mut self,
+        account: &AccountInfo,
+        basket_id: Option<&str>,
+        date: &str,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestShowOrderHistoryDetail {
+            template_id: 326,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            basket_id: basket_id.map(|s| s.into()),
+            date: Some(date.into()),
+            ..RequestShowOrderHistoryDetail::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_bracket_order(
+        &mut self,
+        account: &AccountInfo,
+        params: BracketOrderParams,
+        trade_route: &str,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+        
+        let mut req = RequestBracketOrder {
+            template_id: 330,
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            trade_route: Some(trade_route.into()),
+            exchange: Some(params.exchange),
+            symbol: Some(params.symbol),
+            quantity: Some(params.quantity),
+            price: Some(params.price),
+            transaction_type: Some(match params.transaction_type {
+                request_new_order::TransactionType::Buy => request_bracket_order::TransactionType::Buy.into(),
+                request_new_order::TransactionType::Sell => request_bracket_order::TransactionType::Sell.into(),
+            }),
+            price_type: Some(match params.price_type {
+                request_new_order::PriceType::Limit => request_bracket_order::PriceType::Limit.into(),
+                request_new_order::PriceType::Market => request_bracket_order::PriceType::Market.into(),
+                request_new_order::PriceType::StopLimit => request_bracket_order::PriceType::StopLimit.into(),
+                request_new_order::PriceType::StopMarket => request_bracket_order::PriceType::StopMarket.into(),
+                _ => request_bracket_order::PriceType::Limit.into(), // Fallback
+            }),
+            duration: Some(match params.duration {
+                request_new_order::Duration::Day => request_bracket_order::Duration::Day.into(),
+                request_new_order::Duration::Gtc => request_bracket_order::Duration::Gtc.into(),
+                request_new_order::Duration::Ioc => request_bracket_order::Duration::Ioc.into(),
+                request_new_order::Duration::Fok => request_bracket_order::Duration::Fok.into(),
+            }),
+            manual_or_auto: Some(request_bracket_order::OrderPlacement::Auto.into()), // Usually Algo/Auto for brackets
+            bracket_type: Some(params.bracket_type.into()),
+            user_msg: vec![id.clone()],
+            user_tag: params.user_tag,
+            ..RequestBracketOrder::default()
+        };
+
+        if let Some(ticks) = params.target_ticks {
+            req.target_ticks.push(ticks);
+            req.target_quantity.push(params.quantity); // Full exit
+        }
+
+        if let Some(ticks) = params.stop_ticks {
+            req.stop_ticks.push(ticks);
+            req.stop_quantity.push(params.quantity); // Full exit
+        }
+
+        self.request_to_buf(req, id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_oco_order(
+        &mut self,
+        account: &AccountInfo,
+        params: OcoOrderParams,
+        trade_route: &str,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        // Helper to convert enums
+        let cvt_action = |a| match a {
+            request_new_order::TransactionType::Buy => request_oco_order::TransactionType::Buy.into(),
+            request_new_order::TransactionType::Sell => request_oco_order::TransactionType::Sell.into(),
+        };
+        let cvt_price = |p| match p {
+            request_new_order::PriceType::Limit => request_oco_order::PriceType::Limit.into(),
+            request_new_order::PriceType::Market => request_oco_order::PriceType::Market.into(),
+            request_new_order::PriceType::StopLimit => request_oco_order::PriceType::StopLimit.into(),
+            request_new_order::PriceType::StopMarket => request_oco_order::PriceType::StopMarket.into(),
+             _ => request_oco_order::PriceType::Limit.into(),
+        };
+        let cvt_dur = match params.duration {
+            request_new_order::Duration::Day => request_oco_order::Duration::Day.into(),
+            request_new_order::Duration::Gtc => request_oco_order::Duration::Gtc.into(),
+            request_new_order::Duration::Ioc => request_oco_order::Duration::Ioc.into(),
+            request_new_order::Duration::Fok => request_oco_order::Duration::Fok.into(),
+        };
+
+        let req = RequestOcoOrder {
+            template_id: 328,
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            
+            symbol: vec![params.leg1.symbol, params.leg2.symbol],
+            exchange: vec![params.leg1.exchange, params.leg2.exchange],
+            quantity: vec![params.leg1.quantity, params.leg2.quantity],
+            price: vec![params.leg1.price, params.leg2.price],
+            transaction_type: vec![cvt_action(params.leg1.transaction_type), cvt_action(params.leg2.transaction_type)],
+            price_type: vec![cvt_price(params.leg1.price_type), cvt_price(params.leg2.price_type)],
+            duration: vec![cvt_dur, cvt_dur],
+            trade_route: vec![trade_route.into(), trade_route.into()], // Same route for both usually
+            manual_or_auto: vec![request_oco_order::OrderPlacement::Auto.into(), request_oco_order::OrderPlacement::Auto.into()],
+            
+            user_msg: vec![id.clone()],
+            user_tag: params.user_tag.map(|t| vec![t]).unwrap_or_default(),
+            ..RequestOcoOrder::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_update_target_bracket_level(
+        &mut self,
+        account: &AccountInfo,
+        basket_id: &str,
+        level: i32,
+        target_ticks: i32,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestUpdateTargetBracketLevel {
+            template_id: 332,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            basket_id: Some(basket_id.into()),
+            level: Some(level),
+            target_ticks: Some(target_ticks),
+            ..RequestUpdateTargetBracketLevel::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_update_stop_bracket_level(
+        &mut self,
+        account: &AccountInfo,
+        basket_id: &str,
+        level: i32,
+        stop_ticks: i32,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestUpdateStopBracketLevel {
+            template_id: 334,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            basket_id: Some(basket_id.into()),
+            level: Some(level),
+            stop_ticks: Some(stop_ticks),
+            ..RequestUpdateStopBracketLevel::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_subscribe_to_bracket_updates(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestSubscribeToBracketUpdates {
+            template_id: 336,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            ..RequestSubscribeToBracketUpdates::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_show_brackets(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestShowBrackets {
+            template_id: 338,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            ..RequestShowBrackets::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_show_bracket_stops(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestShowBracketStops {
+            template_id: 340,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            ..RequestShowBracketStops::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_list_exchange_permissions(
+        &mut self,
+        user: Option<&str>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestListExchangePermissions {
+            template_id: 342,
+            user_msg: vec![id.clone()],
+            user: user.map(|s| s.into()),
+            ..RequestListExchangePermissions::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_link_orders(
+        &mut self,
+        account: &AccountInfo,
+        basket_ids: Vec<String>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestLinkOrders {
+            template_id: 344,
+            user_msg: vec![id.clone()],
+            fcm_id: vec![account.fcm_id.clone()],
+            ib_id: vec![account.ib_id.clone()],
+            account_id: vec![account.account_id.clone()],
+            basket_id: basket_ids,
+            ..RequestLinkOrders::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_easy_to_borrow_list(
+        &mut self,
+        request_type: request_easy_to_borrow_list::Request,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestEasyToBorrowList {
+            template_id: 348,
+            user_msg: vec![id.clone()],
+            request: Some(request_type.into()),
+            ..RequestEasyToBorrowList::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_modify_order_reference_data(
+        &mut self,
+        account: &AccountInfo,
+        basket_id: &str,
+        user_tag: Option<String>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestModifyOrderReferenceData {
+            template_id: 3500,
+            user_msg: vec![id.clone()],
+            user_tag: user_tag,
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            basket_id: Some(basket_id.into()),
+            ..RequestModifyOrderReferenceData::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_order_session_config(
+        &mut self,
+        should_defer_request: Option<bool>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestOrderSessionConfig {
+            template_id: 3502,
+            user_msg: vec![id.clone()],
+            should_defer_request: should_defer_request,
+            ..RequestOrderSessionConfig::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_exit_position(
+        &mut self,
+        account: &AccountInfo,
+        window_name: Option<&str>,
+        symbol: Option<&str>,
+        exchange: Option<&str>,
+        trading_algorithm: Option<&str>,
+        manual_or_auto: request_exit_position::OrderPlacement,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestExitPosition {
+            template_id: 3504,
+            user_msg: vec![id.clone()],
+            window_name: window_name.map(|s| s.into()),
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            symbol: symbol.map(|s| s.into()),
+            exchange: exchange.map(|s| s.into()),
+            trading_algorithm: trading_algorithm.map(|s| s.into()),
+            manual_or_auto: Some(manual_or_auto.into()),
+            ..RequestExitPosition::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_replay_executions(
+        &mut self,
+        account: &AccountInfo,
+        start_index: i32,
+        finish_index: i32,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestReplayExecutions {
+            template_id: 3506,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            start_index: Some(start_index),
+            finish_index: Some(finish_index),
+            ..RequestReplayExecutions::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_account_rms_updates(
+        &mut self,
+        account: &AccountInfo,
+        subscribe: bool,
+        update_bits: Vec<request_account_rms_updates::UpdateBits>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let mut bits = 0;
+        for bit in update_bits {
+            bits |= bit as i32;
+        }
+
+        let req = RequestAccountRmsUpdates {
+            template_id: 3508,
+            user_msg: vec![id.clone()],
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            request: Some(if subscribe { "subscribe".to_string() } else { "unsubscribe".to_string() }),
+            update_bits: Some(bits),
+            ..RequestAccountRmsUpdates::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    // --- PnL & Position ---
+
+    pub fn request_pnl_position_updates(
+        &mut self,
+        account: &AccountInfo,
+        subscribe: bool,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestPnLPositionUpdates {
+            template_id: 400,
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            request: Some(if subscribe { 
+                request_pn_l_position_updates::Request::Subscribe.into() 
+            } else { 
+                request_pn_l_position_updates::Request::Unsubscribe.into() 
+            }),
+            user_msg: vec![id.clone()],
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_pnl_position_snapshot(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestPnLPositionSnapshot {
+            template_id: 402,
+            fcm_id: Some(account.fcm_id.clone()),
+            ib_id: Some(account.ib_id.clone()),
+            account_id: Some(account.account_id.clone()),
+            user_msg: vec![id.clone()],
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    // --- Repository ---
+
+    pub fn request_list_unaccepted_agreements(&mut self) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestListUnacceptedAgreements {
+            template_id: 500,
+            user_msg: vec![id.clone()],
+            ..RequestListUnacceptedAgreements::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_list_accepted_agreements(&mut self) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestListAcceptedAgreements {
+            template_id: 502,
+            user_msg: vec![id.clone()],
+            ..RequestListAcceptedAgreements::default()
+        };
+
+        self.request_to_buf(req, id)
+    }
+
+    pub fn request_show_agreement(
+        &mut self,
+        agreement_id: Option<&str>,
+    ) -> (Vec<u8>, String) {
+        let id = self.get_next_message_id();
+
+        let req = RequestShowAgreement {
+            template_id: 506,
+            user_msg: vec![id.clone()],
+            agreement_id: agreement_id.map(|s| s.into()),
+            ..RequestShowAgreement::default()
         };
 
         self.request_to_buf(req, id)

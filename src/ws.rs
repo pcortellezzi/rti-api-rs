@@ -89,10 +89,8 @@ fn get_proxy_url() -> Option<Url> {
     let vars = ["HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"];
     
     for var in vars {
-        if let Ok(val) = env::var(var) {
-            if !val.is_empty() {
-                return Url::parse(&val).ok();
-            }
+        if let Ok(val) = env::var(var) && !val.is_empty() {
+            return Url::parse(&val).ok();
         }
     }
     None

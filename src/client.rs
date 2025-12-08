@@ -10,9 +10,7 @@ use crate::connection_info::{AccountInfo, RithmicCredentials, BOOTSTRAP_URL};
 use crate::plants::worker::{start_plant_worker, WorkerCommand};
 use crate::rti::request_login::SysInfraType;
 use crate::rti::request_market_data_update::{Request, UpdateBits};
-use crate::rti::request_tick_bar_replay::BarType; 
 use crate::rti::request_time_bar_replay;
-use crate::rti::request_new_order::{TransactionType, PriceType};
 use crate::rti::messages::RithmicMessage;
 use crate::ws::{connect, receive_bytes, send_bytes};
 
@@ -23,22 +21,32 @@ pub struct TradeRouteInfo {
     pub exchange: String,
 }
 
+use dashmap::DashMap; // For caching
+pub use crate::api::sender_api::{OrderParams, ModifyOrderParams, BracketOrderParams, OcoOrderParams, OcoLegParams};
+
+// ... imports ...
+
 /// Main client to interact with Rithmic
 pub struct RithmicClient {
-    credentials: RithmicCredentials,
-    pub account_info: AccountInfo, // Public to access fcm_id etc.
+    pub credentials: RithmicCredentials,
+    pub account_info: AccountInfo, 
     sender_api: Arc<Mutex<RithmicSenderApi>>,
     
     // Command channels for each plant
     ticker_tx: Option<mpsc::Sender<WorkerCommand>>,
     history_tx: Option<mpsc::Sender<WorkerCommand>>,
     order_tx: Option<mpsc::Sender<WorkerCommand>>,
-    
+    pnl_tx: Option<mpsc::Sender<WorkerCommand>>,
+
+    // Cache
+    trade_routes_cache: Arc<DashMap<String, String>>, // Exchange -> TradeRoute
+
     // Background handles
     handles: Vec<JoinHandle<()>>,
 }
 
 impl RithmicClient {
+    /// Create a new RithmicClient with the provided credentials.
     pub fn new(credentials: RithmicCredentials) -> Self {
         let sender_api = RithmicSenderApi::new();
         Self {
@@ -48,6 +56,8 @@ impl RithmicClient {
             ticker_tx: None,
             history_tx: None,
             order_tx: None,
+            pnl_tx: None,
+            trade_routes_cache: Arc::new(DashMap::new()),
             handles: Vec::new(),
         }
     }
@@ -69,12 +79,12 @@ impl RithmicClient {
 
         // Create global event channel
         let (event_tx, event_rx) = mpsc::channel(10000);
-        
+
         // 2. Connect Ticker Plant (Market Data)
         let ticker_tx = self.spawn_plant(
             "Ticker Plant",
-            &gateway_uri, 
-            SysInfraType::TickerPlant, 
+            &gateway_uri,
+            SysInfraType::TickerPlant,
             event_tx.clone()
         ).await?;
         self.ticker_tx = Some(ticker_tx);
@@ -97,14 +107,40 @@ impl RithmicClient {
         ).await?;
         self.order_tx = Some(order_tx);
 
-        // 5. Fetch Account ID (Crucial for other requests)
+        // 5. Connect PnL Plant
+        let pnl_tx = self.spawn_plant(
+            "PnL Plant",
+            &gateway_uri,
+            SysInfraType::PnlPlant,
+            event_tx.clone()
+        ).await?;
+        self.pnl_tx = Some(pnl_tx);
+
+        // 6. Fetch Account ID (Crucial for other requests)
         info!("Fetching Account List to determine Account ID...");
         self.fetch_accounts().await?;
 
         // Subscribe to Order Updates automatically
         self.subscribe_order_updates().await?;
 
+        // Populate Trade Routes Cache
+        if let Err(e) = self.populate_trade_routes_cache().await {
+            warn!("Failed to populate trade routes cache: {}", e);
+        }
+
         Ok(event_rx)
+    }
+
+    async fn populate_trade_routes_cache(&self) -> Result<(), anyhow::Error> {
+        let routes = self.list_trade_routes().await?;
+        for r in routes {
+            // Store exchange -> trade_route. First one wins.
+            if !self.trade_routes_cache.contains_key(&r.exchange) {
+                self.trade_routes_cache.insert(r.exchange.clone(), r.trade_route.clone());
+            }
+        }
+        debug!("Trade Routes Cached: {:?}", self.trade_routes_cache);
+        Ok(())
     }
 
     async fn fetch_accounts(&mut self) -> Result<(), anyhow::Error> {
@@ -114,13 +150,13 @@ impl RithmicClient {
              drop(sender);
 
              let (reply_tx, reply_rx) = oneshot::channel();
-             tx.send(WorkerCommand { 
-                 payload: buf, 
-                 request_id: req_id, 
+             tx.send(WorkerCommand {
+                 payload: buf,
+                 request_id: req_id,
                  reply_tx: Some(reply_tx),
                  stream_tx: None, // This is a single response
              }).await.map_err(|_| anyhow::anyhow!("Order worker unreachable"))?;
-             
+
              match timeout(Duration::from_secs(10), reply_rx).await {
                  Ok(Ok(Ok(resp))) => {
                      if let RithmicMessage::ResponseAccountList(list) = resp.message {
@@ -143,18 +179,60 @@ impl RithmicClient {
     }
 
     // --- Market Data ---
-    
+
     pub async fn subscribe_market_data(
-        &self, 
-        symbol: &str, 
+        &self,
+        symbol: &str,
         exchange: &str,
-        fields: Option<Vec<UpdateBits>>
+        fields: Option<Vec<crate::MarketDataField>>
     ) -> Result<(), anyhow::Error> {
         let mut sender = self.sender_api.lock().await;
         let sub_fields = fields.unwrap_or_else(|| vec![UpdateBits::LastTrade, UpdateBits::Bbo]);
         let (buf, req_id) = sender.request_market_data_update(symbol, exchange, sub_fields, Request::Subscribe);
         drop(sender);
         self.send_single_command_to_plant(&self.ticker_tx, "Ticker", buf, req_id).await
+    }
+
+    /// Retrieves the front month contract for a given symbol base (e.g., "ES", "NQ").
+    pub async fn get_front_month_contract(
+        &self,
+        symbol: &str,
+        exchange: &str,
+    ) -> Result<crate::rti::ResponseFrontMonthContract, anyhow::Error> {
+        let mut sender = self.sender_api.lock().await;
+        // We request updates=false because we just want the current front month info, typically.
+        let (buf, req_id) = sender.request_front_month_contract(symbol, exchange, false);
+        drop(sender);
+
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        if let Some(tx) = &self.ticker_tx {
+             tx.send(WorkerCommand {
+                 payload: buf,
+                 request_id: req_id,
+                 reply_tx: Some(reply_tx),
+                 stream_tx: None,
+             }).await.map_err(|_| anyhow::anyhow!("Ticker plant unreachable"))?;
+
+             match timeout(Duration::from_secs(10), reply_rx).await {
+                 Ok(Ok(res)) => {
+                     match res {
+                         Ok(resp) => {
+                             if let RithmicMessage::ResponseFrontMonthContract(data) = resp.message {
+                                 Ok(data)
+                             } else {
+                                 Err(anyhow::anyhow!("Unexpected response type: {:?}", resp.message))
+                             }
+                         },
+                         Err(e) => Err(anyhow::anyhow!("Rithmic Error: {}", e)),
+                     }
+                 },
+                 Ok(Err(e)) => Err(anyhow::anyhow!("Request failed: {}", e)),
+                 Err(_) => Err(anyhow::anyhow!("Timeout waiting for front month contract")),
+             }
+        } else {
+            Err(anyhow::anyhow!("Ticker plant not connected"))
+        }
     }
 
     // --- History ---
@@ -196,37 +274,22 @@ impl RithmicClient {
         self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
     }
 
-    pub async fn submit_order(
-        &self,
-        symbol: &str,
-        exchange: &str,
-        qty: i32,
-        price: f64,
-        side: TransactionType,
-        order_type: PriceType,
-        duration: crate::rti::request_new_order::Duration,
-        trade_route: &str, // e.g. "simulator"
-    ) -> Result<(), anyhow::Error> {
-        let mut sender = self.sender_api.lock().await;
-        let local_id = uuid::Uuid::new_v4().to_string();
-        
-        let (buf, req_id) = sender.request_new_order(
-            &self.account_info,
-            exchange,
-            symbol,
-            qty,
-            price,
-            side,
-            order_type,
-            duration,
-            &local_id,
-            trade_route
-        );
-        drop(sender);
-        
-        self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
-    }
+        pub async fn submit_order(
+            &self,
+            params: OrderParams,
+        ) -> Result<(), anyhow::Error> {
+            let route = if let Some(r) = self.trade_routes_cache.get(&params.exchange) {
+                r.value().clone()
+            } else {
+                return Err(anyhow::anyhow!("Trade route not found in cache for exchange '{}'.", params.exchange));
+            };
 
+            let mut sender = self.sender_api.lock().await;
+            let (buf, req_id) = sender.request_new_order(&self.account_info, params, &route);
+            drop(sender);
+
+            self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
+        }
     pub async fn cancel_order(&self, order_id: &str) -> Result<(), anyhow::Error> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_cancel_order(&self.account_info, order_id);
@@ -248,25 +311,60 @@ impl RithmicClient {
         self.send_stream_command_to_plant(&self.order_tx, "Order", buf, req_id).await
     }
 
+    /// Retrieves the order history for the current session.
+    ///
+    /// Optional `basket_id` can be used to filter by a specific order/basket ID.
+    /// Returns a stream of `RithmicResponse`.
+    pub async fn get_order_history(
+        &self,
+        basket_id: Option<&str>
+    ) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, anyhow::Error> {
+        let mut sender = self.sender_api.lock().await;
+        let (buf, req_id) = sender.request_show_order_history(&self.account_info, basket_id);
+        drop(sender);
+        self.send_stream_command_to_plant(&self.order_tx, "Order", buf, req_id).await
+    }
+
     pub async fn modify_order(
         &self,
-        basket_id: &str,
-        exchange: &str,
-        symbol: &str,
-        qty: i32,
-        price: f64,
-        order_type: PriceType
+        params: ModifyOrderParams
     ) -> Result<(), anyhow::Error> {
         let mut sender = self.sender_api.lock().await;
-        let (buf, req_id) = sender.request_modify_order(
-            &self.account_info,
-            basket_id,
-            exchange,
-            symbol,
-            qty,
-            price,
-            order_type
-        );
+        let (buf, req_id) = sender.request_modify_order(&self.account_info, params);
+        drop(sender);
+        self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
+    }
+
+    pub async fn place_bracket_order(
+        &self,
+        params: BracketOrderParams
+    ) -> Result<(), anyhow::Error> {
+        let route = if let Some(r) = self.trade_routes_cache.get(&params.exchange) {
+            r.value().clone()
+        } else {
+            return Err(anyhow::anyhow!("Trade route not found in cache for exchange '{}'.", params.exchange));
+        };
+
+        let mut sender = self.sender_api.lock().await;
+        let (buf, req_id) = sender.request_bracket_order(&self.account_info, params, &route);
+        drop(sender);
+        self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
+    }
+
+    /// Place an OCO (One-Cancels-Other) order with two legs.
+    pub async fn place_oco_order(
+        &self,
+        params: OcoOrderParams
+    ) -> Result<(), anyhow::Error> {
+        // Assuming same exchange for route lookup
+        let route = if let Some(r) = self.trade_routes_cache.get(&params.leg1.exchange) {
+            r.value().clone()
+        } else {
+            return Err(anyhow::anyhow!("Trade route not found in cache for exchange '{}'.", params.leg1.exchange));
+        };
+
+        let mut sender = self.sender_api.lock().await;
+        let (buf, req_id) = sender.request_oco_order(&self.account_info, params, &route);
         drop(sender);
         self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
     }
@@ -304,13 +402,13 @@ impl RithmicClient {
         info!("Listing Systems from bootstrap URL: {}", BOOTSTRAP_URL);
         let mut stream = connect(BOOTSTRAP_URL).await?;
         let mut sender = self.sender_api.lock().await;
-        
+
         let (req, req_id) = sender.request_rithmic_system_info();
         send_bytes(&mut stream, req).await?;
         drop(sender);
 
         let mut systems = Vec::new();
-        
+
         let result = timeout(Duration::from_secs(10), async {
             loop {
                  match receive_bytes(&mut stream).await {
@@ -351,7 +449,109 @@ impl RithmicClient {
         }
     }
 
+    // --- PnL ---
+
+    pub async fn subscribe_pnl(&self) -> Result<(), anyhow::Error> {
+        let mut sender = self.sender_api.lock().await;
+        let (buf, req_id) = sender.request_pnl_position_updates(&self.account_info, true);
+        drop(sender);
+        self.send_single_command_to_plant(&self.pnl_tx, "PnL", buf, req_id).await
+    }
+
+    pub async fn unsubscribe_pnl(&self) -> Result<(), anyhow::Error> {
+        let mut sender = self.sender_api.lock().await;
+        let (buf, req_id) = sender.request_pnl_position_updates(&self.account_info, false);
+        drop(sender);
+        self.send_single_command_to_plant(&self.pnl_tx, "PnL", buf, req_id).await
+    }
+
+    pub async fn request_pnl_snapshot(&self) -> Result<(), anyhow::Error> {
+         let mut sender = self.sender_api.lock().await;
+         let (buf, req_id) = sender.request_pnl_position_snapshot(&self.account_info);
+         drop(sender);
+         self.send_single_command_to_plant(&self.pnl_tx, "PnL", buf, req_id).await
+    }
+
+    // --- Reference Data & Search ---
+
+    pub async fn search_symbols(
+        &self,
+        search_text: &str,
+        instrument_type: Option<crate::rti::request_search_symbols::InstrumentType>,
+        pattern: Option<crate::rti::request_search_symbols::Pattern>
+    ) -> Result<Vec<String>, anyhow::Error> {
+        let mut sender = self.sender_api.lock().await;
+        let (buf, req_id) = sender.request_search_symbols(search_text, instrument_type, pattern);
+        drop(sender);
+
+        let mut stream_rx = self.send_stream_command_to_plant(&self.ticker_tx, "Ticker", buf, req_id).await?;
+
+        let mut results = Vec::new();
+
+        while let Some(res) = stream_rx.recv().await {
+             match res {
+                 Ok(resp) => {
+                     if let RithmicMessage::ResponseSearchSymbols(r) = resp.message {
+                         // Compiler indicates symbol_name is Option<String>
+                         if let Some(name) = r.symbol_name {
+                             results.push(name);
+                         }
+                         if !resp.has_more {
+                             break;
+                         }
+                     }
+                 },
+                 Err(e) => return Err(anyhow::anyhow!("Search failed: {}", e)),
+             }
+        }
+        Ok(results)
+    }
+
+    pub async fn get_reference_data(&self, symbol: &str, exchange: &str) -> Result<crate::rti::ResponseReferenceData, anyhow::Error> {
+        let mut sender = self.sender_api.lock().await;
+        let (buf, req_id) = sender.request_reference_data(symbol, exchange);
+        drop(sender);
+
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        // Send to Ticker Plant
+        if let Some(tx) = &self.ticker_tx {
+             tx.send(WorkerCommand {
+                 payload: buf,
+                 request_id: req_id,
+                 reply_tx: Some(reply_tx),
+                 stream_tx: None,
+             }).await.map_err(|_| anyhow::anyhow!("Ticker plant unreachable"))?;
+
+             match timeout(Duration::from_secs(10), reply_rx).await {
+                 Ok(Ok(res)) => {
+                     match res {
+                         Ok(resp) => {
+                             if let RithmicMessage::ResponseReferenceData(data) = resp.message {
+                                 Ok(data)
+                             } else {
+                                 Err(anyhow::anyhow!("Unexpected response type: {:?}", resp.message))
+                             }
+                         },
+                         Err(e) => Err(anyhow::anyhow!("Rithmic Error: {}", e)),
+                     }
+                 },
+                 Ok(Err(e)) => Err(anyhow::anyhow!("Request failed: {}", e)),
+                 Err(_) => Err(anyhow::anyhow!("Timeout waiting for reference data")),
+             }
+        } else {
+            Err(anyhow::anyhow!("Ticker plant not connected"))
+        }
+    }
+
+    #[allow(clippy::collapsible_if)]
     async fn discover_gateway(&self) -> Result<String, anyhow::Error> {
+        // Special handling for Rithmic Test environment
+        if self.credentials.system_name == "Rithmic Test" {
+            info!("System is 'Rithmic Test', utilizing hardcoded test gateway.");
+            return Ok("wss://rituz00100.rithmic.com:443".to_string());
+        }
+
         info!("Discovery: Connecting to bootstrap URL: {}", BOOTSTRAP_URL);
         let mut stream = connect(BOOTSTRAP_URL).await?;
 
@@ -417,12 +617,12 @@ impl RithmicClient {
         event_tx: mpsc::Sender<RithmicResponse>,
     ) -> Result<mpsc::Sender<WorkerCommand>, anyhow::Error> {
         info!("Initializing {}", name);
-        
+
         let mut sender = self.sender_api.lock().await;
         let (login_buf, login_id) = sender.request_login(
-            &self.credentials.system_name, 
-            infra_type, 
-            &self.credentials.user, 
+            &self.credentials.system_name,
+            infra_type,
+            &self.credentials.user,
             &self.credentials.password
         );
         drop(sender);
@@ -432,15 +632,15 @@ impl RithmicClient {
 
         let url_clone = url.to_string();
         let name_clone = name.to_string();
-        
+
         let handle = tokio::spawn(async move {
             if let Err(e) = start_plant_worker(url_clone, (login_buf, login_id), cmd_rx, event_tx, login_tx).await {
                 error!("{} worker failed: {}", name_clone, e);
             }
         });
-        
+
         self.handles.push(handle);
-        
+
         match timeout(Duration::from_secs(10), login_rx).await {
             Ok(Ok(Ok(login_resp))) => {
                 if !login_resp.fcm_id.as_deref().unwrap_or_default().is_empty() {
@@ -449,21 +649,21 @@ impl RithmicClient {
                 if !login_resp.ib_id.as_deref().unwrap_or_default().is_empty() {
                     self.account_info.ib_id = login_resp.ib_id.unwrap_or_default();
                 }
-                
+
                 debug!("Login confirmed for {}. Info: {:?}", name, self.account_info);
             },
             Ok(Ok(Err(e))) => return Err(anyhow::anyhow!("Login refused by Rithmic: {}", e)),
             Ok(Err(_)) => return Err(anyhow::anyhow!("Worker failed to send login status")),
             Err(_) => return Err(anyhow::anyhow!("Login status timed out")),
         }
-        
+
         Ok(cmd_tx)
     }
 
     async fn send_single_command_to_plant(&self, tx_option: &Option<mpsc::Sender<WorkerCommand>>, plant_name: &str, payload: Vec<u8>, request_id: String) -> Result<(), anyhow::Error> {
         if let Some(tx) = tx_option {
             let (reply_tx, reply_rx) = oneshot::channel();
-            
+
             tx.send(WorkerCommand {
                 payload,
                 request_id,
@@ -490,7 +690,7 @@ impl RithmicClient {
     async fn send_stream_command_to_plant(&self, tx_option: &Option<mpsc::Sender<WorkerCommand>>, plant_name: &str, payload: Vec<u8>, request_id: String) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, anyhow::Error> {
         if let Some(tx) = tx_option {
             let (stream_tx, stream_rx) = mpsc::channel(1000); // Buffer for stream
-            
+
             tx.send(WorkerCommand {
                 payload,
                 request_id,

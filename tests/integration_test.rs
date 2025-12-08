@@ -1,10 +1,11 @@
 use rithmic_rs::{
     RithmicClient,
-    connection_info::{RithmicConnectionSystem, get_credentials_from_env},
+    connection_info::{get_credentials_from_env},
     RithmicMessage,
     rti::request_new_order::{PriceType, TransactionType, Duration},
-    rti::request_market_data_update::UpdateBits,
     api::decoder::RithmicResponse,
+    OrderParams, // Import OrderParams
+    ModifyOrderParams,
 };
 use dotenv::dotenv;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,12 +14,14 @@ use tokio::time::{sleep, Duration as TokioDuration};
 async fn get_connected_client() -> Result<(RithmicClient, tokio::sync::mpsc::Receiver<RithmicResponse>), anyhow::Error> {
     dotenv().ok();
 
-    if std::env::var("RITHMIC_TEST_USER").is_err() {
+    // Look for RITHMIC_USER_TEST to verify env exists before proceeding
+    if std::env::var("RITHMIC_USER_TEST").is_err() {
         return Err(anyhow::anyhow!("SKIPPED_NO_CREDS"));
     }
 
-    let env_type = RithmicConnectionSystem::Test;
-    let credentials = get_credentials_from_env(&env_type);
+    // Uses RITHMIC_USER_TEST, RITHMIC_PASSWORD_TEST, etc. from env
+    let credentials = get_credentials_from_env(Some("TEST"))
+        .map_err(|e| anyhow::anyhow!("Failed to load credentials: {}", e))?;
 
     let mut client = RithmicClient::new(credentials);
     // If connect fails, we want the test to FAIL
@@ -137,35 +140,27 @@ async fn test_order_lifecycle() -> Result<(), anyhow::Error> {
     // 1. Place Limit Buy Order (Way below market to avoid fill)
     let symbol = "ESZ5";
     let exchange = "CME";
-    let price = 6500.0; // More realistic low price
-    let qty = 1;
+        let price = 6500.0; // More realistic low price
+        let qty = 1;
+        
+        println!("Submitting Order (Auto-Route)...");
+        
+        let params = OrderParams {
+            symbol: symbol.into(),
+            exchange: exchange.into(),
+            quantity: qty,
+            price,
+            transaction_type: TransactionType::Buy,
+            price_type: PriceType::Limit,
+            duration: Duration::Day,
+            user_tag: None,
+        };
 
-    println!("Fetching Trade Routes...");
-    let routes = client.list_trade_routes().await?;
-
-    // Select Route based on the exact exchange of the symbol
-    let trade_route_info = routes.iter()
-        .find(|r| r.exchange == exchange)
-        .ok_or(anyhow::anyhow!("No trade route found for exchange {}", exchange))?;
-    println!("Using Trade Route: {:?}", trade_route_info);
-
-    let trade_route_str = trade_route_info.trade_route.clone();
-
-    println!("Submitting Order...");
-    client.submit_order(
-        symbol,
-        exchange,
-        qty,
-        price,
-        TransactionType::Buy,
-        PriceType::Limit,
-        Duration::Day,
-        &trade_route_str
-    ).await?;
-
-    let mut order_id = String::new();
+        // The client will automatically resolve the trade route for "CME"
+        // provided populate_trade_routes_cache() succeeded during connect().
+        client.submit_order(params).await?;
+    
     let mut basket_id = String::new();
-    let mut modified = false;
     let mut cancelled = false;
 
     let timeout = sleep(TokioDuration::from_secs(20));
@@ -186,8 +181,7 @@ async fn test_order_lifecycle() -> Result<(), anyhow::Error> {
                             // 1. Capture ID and wait for Open
                             if state == "submitted" {
                                 if let Some(bid) = n.basket_id.clone() {
-                                    basket_id = bid.clone();
-                                    order_id = bid;
+                                    basket_id = bid;
                                 }
                                 // Wait for "Open" or "Working" to be sure we can modify
                                 if let Some(s) = &n.status {
@@ -196,8 +190,18 @@ async fn test_order_lifecycle() -> Result<(), anyhow::Error> {
                                     if (s_lower.contains("open") && !s_lower.contains("pending")) || s_lower.contains("working") {
                                         println!("-> Order OPEN confirmed. Sending Modify...");
                                         state = "modifying";
+                                        
+                                        let mod_params = ModifyOrderParams {
+                                            basket_id: basket_id.clone(),
+                                            symbol: symbol.into(),
+                                            exchange: exchange.into(),
+                                            quantity: qty,
+                                            price: 1001.0,
+                                            price_type: PriceType::Limit,
+                                        };
+
                                         // Send Modify
-                                        if let Err(e) = client.modify_order(&basket_id, exchange, symbol, qty, 1001.0, PriceType::Limit).await {
+                                        if let Err(e) = client.modify_order(mod_params).await {
                                             println!("Modify failed: {}", e);
                                             state = "cancelling";
                                             client.cancel_order(&basket_id).await?;

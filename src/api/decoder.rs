@@ -17,20 +17,20 @@ pub struct RithmicResponse {
     pub error: Option<String>,
 }
 
-pub fn decode_message(data: &[u8]) -> Result<RithmicResponse, RithmicResponse> {
+pub fn decode_message(data: &[u8]) -> Result<RithmicResponse, Box<RithmicResponse>> {
     let cursor = &mut Cursor::new(&data[4..]);
     let parsed_message = match MessageType::decode(cursor) {
         Ok(m) => m,
         Err(e) => {
             event!(Level::ERROR, "Failed to decode MessageType: {:?}", e);
-            return Err(RithmicResponse {
+            return Err(Box::new(RithmicResponse {
                 request_id: "".to_string(),
                 message: RithmicMessage::Reject(Reject::default()),
                 is_update: false,
                 has_more: false,
                 multi_response: false,
                 error: Some(format!("Decode Error: {}", e)),
-            });
+            }));
         }
     };
 
@@ -113,6 +113,14 @@ pub fn decode_message(data: &[u8]) -> Result<RithmicResponse, RithmicResponse> {
                 error: get_error(&resp.rp_code),
                 message: RithmicMessage::Reject(resp),
                 is_update: false, has_more: false, multi_response: false,
+            }
+        },
+        76 => { // User Account Update
+            let resp = UserAccountUpdate::decode(payload_slice).unwrap();
+            RithmicResponse {
+                request_id: "".to_string(),
+                message: RithmicMessage::UserAccountUpdate(resp),
+                is_update: true, has_more: false, multi_response: false, error: None,
             }
         },
         77 => {
@@ -877,13 +885,13 @@ pub fn decode_message(data: &[u8]) -> Result<RithmicResponse, RithmicResponse> {
     // Check for error in response
     if let Some(err_msg) = &response.error {
         event!(Level::ERROR, "Rithmic Error: {:?} - {}", response.message, err_msg);
-         return Err(response);
+         return Err(Box::new(response));
     }
 
     Ok(response)
 }
 
-fn get_error(rp_code: &Vec<String>) -> Option<String> {
+fn get_error(rp_code: &[String]) -> Option<String> {
     if (rp_code.len() == 1 && rp_code[0] == "0") || (rp_code.is_empty()) {
         None
     } else {

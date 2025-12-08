@@ -31,3 +31,6 @@ base64 = "0.22.1"
 
 [build-dependencies]
 prost-build = "0.13.5"
+
+[dev-dependencies]
+regex = "1.10.0"

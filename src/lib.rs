@@ -22,5 +22,13 @@ mod plants;
 
 // Public Re-exports
 pub use client::RithmicClient;
-pub use connection_info::{AccountInfo, RithmicConnectionSystem};
+pub use client::{OrderParams, ModifyOrderParams, BracketOrderParams, OcoOrderParams, OcoLegParams};
+pub use connection_info::AccountInfo;
 pub use rti::messages::RithmicMessage;
+
+// Type Aliases for better DX
+pub use rti::request_new_order::TransactionType;
+pub use rti::request_new_order::PriceType;
+pub use rti::request_new_order::Duration as OrderDuration; // Renamed to avoid conflict with std::time::Duration
+pub use rti::request_bracket_order::BracketType;
+pub use rti::request_market_data_update::UpdateBits as MarketDataField; // More descriptive name

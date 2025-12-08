@@ -8,12 +8,8 @@ fn main() -> Result<()> {
 
     for entry in fs::read_dir(PROTO_PATH).unwrap() {
         let entry_path = entry.unwrap().path();
-        if entry_path.is_file() {
-            if let Some(extension) = entry_path.extension() {
-                if extension == "proto" {
-                    proto_files.push(entry_path.display().to_string())
-                }
-            }
+        if entry_path.is_file() && entry_path.extension().is_some_and(|ext| ext == "proto") {
+            proto_files.push(entry_path.display().to_string())
         }
     }
 
