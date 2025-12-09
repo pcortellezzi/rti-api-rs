@@ -1,5 +1,5 @@
 use rti_api_rs::{
-    api::decoder::decode_message,
+    api::receiver_api::decode_message,
     rti::{
         ResponseLogin, ResponseHeartbeat,
         ResponseSearchSymbols, ResponseShowOrders, 

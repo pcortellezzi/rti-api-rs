@@ -232,7 +232,7 @@ mod compliance {
     }
 
     fn get_implemented_responses() -> HashMap<i32, String> {
-        let content = fs::read_to_string("src/api/decoder.rs").expect("Failed to read decoder.rs");
+        let content = fs::read_to_string("src/api/receiver_api.rs").expect("Failed to read receiver_api.rs");
         let re = Regex::new(r"(\d+)\s*=>\s*\{\s*[\s\S]*?let\s+resp\s*=\s*(\w+)::decode").unwrap();
         let mut map = HashMap::new();
         for caps in re.captures_iter(&content) {

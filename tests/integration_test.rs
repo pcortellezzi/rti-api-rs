@@ -3,7 +3,7 @@ use rti_api_rs::{
     connection_info::{get_credentials_from_env},
     RithmicMessage,
     rti::request_new_order::{PriceType, TransactionType, Duration},
-    api::decoder::RithmicResponse,
+    api::receiver_api::RithmicResponse,
     OrderParams, // Import OrderParams
     ModifyOrderParams,
 };

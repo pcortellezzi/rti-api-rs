@@ -13,7 +13,6 @@ use rti_api_rs::{
         request_time_bar_replay::{BarType, TimeOrder},
         request_search_symbols::{InstrumentType, Pattern},
         request_new_order,
-        request_bracket_order,
         request_oco_order,
     },
     connection_info::AccountInfo,

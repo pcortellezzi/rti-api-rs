@@ -4,7 +4,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::{interval, Duration};
 use tracing::{debug, error, info};
 
-use crate::api::decoder::{decode_message, RithmicResponse};
+use crate::api::receiver_api::{decode_message, RithmicResponse};
 use crate::ws::{connect, receive_bytes, send_bytes};
 use crate::rti::{RequestHeartbeat, messages::RithmicMessage, ResponseLogin};
 
