@@ -3,6 +3,7 @@ use prost::Message; // Trait required for encode
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{interval, Duration};
 use tracing::{debug, error, info};
+use eyre::{eyre, Report, Result};
 
 use crate::api::receiver_api::{decode_message, RithmicResponse};
 use crate::ws::{connect, receive_bytes, send_bytes};
@@ -25,7 +26,7 @@ pub async fn start_plant_worker(
     mut command_rx: mpsc::Receiver<WorkerCommand>,
     event_tx: mpsc::Sender<RithmicResponse>,
     login_result_tx: oneshot::Sender<Result<ResponseLogin, String>>,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), Report> {
     
     info!("Starting worker for {}", url);
     let mut login_result_tx = Some(login_result_tx);
@@ -87,7 +88,7 @@ pub async fn start_plant_worker(
                                  if let Some(tx) = login_result_tx.take() {
                                      let _ = tx.send(Err("Unexpected response type during login".into()));
                                  }
-                                 return Err(anyhow::anyhow!("Unexpected response type during login"));
+                                 return Err(eyre!("Unexpected response type during login"));
                              }
                          } else {
                              // Ignore other messages during login or handle them?
@@ -100,7 +101,7 @@ pub async fn start_plant_worker(
                          if let Some(tx) = login_result_tx.take() {
                              let _ = tx.send(Err(err_msg.clone()));
                          }
-                         return Err(anyhow::anyhow!("Login failed: {}", err_msg));
+                         return Err(eyre!("Login failed: {}", err_msg));
                      }
                  }
             }
@@ -110,7 +111,7 @@ pub async fn start_plant_worker(
                 if let Some(tx) = login_result_tx.take() {
                     let _ = tx.send(Err(msg.into()));
                 }
-                return Err(anyhow::anyhow!(msg));
+                return Err(eyre!(msg));
             }
             Err(e) => {
                 let msg = format!("Socket error during login: {}", e);

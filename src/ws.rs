@@ -12,14 +12,15 @@ use native_tls::TlsConnector as NativeTlsConnector;
 use tracing::{debug, info, error};
 use url::Url;
 use bytes::Bytes;
+use eyre::{eyre, Report, Result};
 
 pub type RithmicStream = WebSocketStream<TlsStream<TcpStream>>;
 
 /// Connect to a Rithmic WebSocket endpoint with SSL/TLS, supporting system proxies.
-pub async fn connect(url: &str) -> Result<RithmicStream, anyhow::Error> {
+pub async fn connect(url: &str) -> Result<RithmicStream, Report> {
     let target_url = Url::parse(url)?;
-    let host = target_url.host_str().ok_or_else(|| anyhow::anyhow!("No host in URL"))?;
-    let port = target_url.port_or_known_default().ok_or_else(|| anyhow::anyhow!("No port in URL"))?;
+    let host = target_url.host_str().ok_or_else(|| eyre!("No host in URL"))?;
+    let port = target_url.port_or_known_default().ok_or_else(|| eyre!("No port in URL"))?;
     
     // 1. Detect Proxy
     let proxy_url = get_proxy_url();
@@ -41,14 +42,14 @@ pub async fn connect(url: &str) -> Result<RithmicStream, anyhow::Error> {
     // We must provide the domain name for SNI
     let tls_stream = cx.connect(host, tcp_stream).await.map_err(|e| {
         error!("TLS Handshake failed: {}", e);
-        anyhow::anyhow!("TLS Handshake failed: {}", e)
+        eyre!("TLS Handshake failed: {}", e)
     })?;
 
     // 3. WebSocket Handshake
     debug!("Starting WebSocket Handshake");
     let (ws_stream, _) = client_async(url, tls_stream).await.map_err(|e| {
         error!("WebSocket Handshake failed: {}", e);
-        anyhow::anyhow!("WebSocket Handshake failed: {}", e)
+        eyre!("WebSocket Handshake failed: {}", e)
     })?;
 
     info!("Connected to Rithmic WS: {}", url);
@@ -56,12 +57,12 @@ pub async fn connect(url: &str) -> Result<RithmicStream, anyhow::Error> {
 }
 
 /// Helper to send bytes
-pub async fn send_bytes(stream: &mut RithmicStream, data: Vec<u8>) -> Result<(), anyhow::Error> {
+pub async fn send_bytes(stream: &mut RithmicStream, data: Vec<u8>) -> Result<(), Report> {
     stream.send(Message::Binary(Bytes::from(data))).await.map_err(|e| e.into())
 }
 
 /// Helper to receive bytes
-pub async fn receive_bytes(stream: &mut RithmicStream) -> Result<Option<Vec<u8>>, anyhow::Error> {
+pub async fn receive_bytes(stream: &mut RithmicStream) -> Result<Option<Vec<u8>>, Report> {
     match stream.next().await {
         Some(Ok(Message::Binary(data))) => Ok(Some(data.to_vec())),
         Some(Ok(Message::Ping(_))) => {
@@ -96,8 +97,8 @@ fn get_proxy_url() -> Option<Url> {
     None
 }
 
-async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16) -> Result<TcpStream, anyhow::Error> {
-    let proxy_host = proxy_url.host_str().ok_or_else(|| anyhow::anyhow!("Invalid proxy host"))?;
+async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16) -> Result<TcpStream, Report> {
+    let proxy_host = proxy_url.host_str().ok_or_else(|| eyre!("Invalid proxy host"))?;
     let proxy_port = proxy_url.port_or_known_default().unwrap_or(8080);
 
     debug!("Connecting to proxy at {}:{}", proxy_host, proxy_port);
@@ -133,7 +134,7 @@ async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16)
     // Read Status Line
     reader.read_line(&mut line).await?;
     if !line.starts_with("HTTP/1.1 200") && !line.starts_with("HTTP/1.0 200") {
-        return Err(anyhow::anyhow!("Proxy handshake failed: {}", line.trim()));
+        return Err(eyre!("Proxy handshake failed: {}", line.trim()));
     }
     
     // Read until empty line
@@ -145,7 +146,7 @@ async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16)
         }
         if line.is_empty() {
             // EOF before end of headers
-            return Err(anyhow::anyhow!("Proxy closed connection during handshake"));
+            return Err(eyre!("Proxy closed connection during handshake"));
         }
     }
 

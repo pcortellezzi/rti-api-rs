@@ -1,40 +1,42 @@
 use rti_api_rs::{RithmicClient, connection_info::get_credentials_from_env, RithmicMessage};
 use dotenv::dotenv;
 use tokio::signal;
+use eyre::{Report, Result};
+use tracing::{debug, info, warn};
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> Result<(), Report> {
     dotenv().ok();
     tracing_subscriber::fmt::init();
 
     // 1. Get credentials from env (User, Pass, System, Gateway)
     let credentials = get_credentials_from_env(None)?;
 
-    println!("Connecting to Rithmic via {}...", credentials.gateway_name);
+    info!("Connecting to Rithmic via {}...", credentials.gateway_name);
     let mut client = RithmicClient::new(credentials);
 
     // 2. List Systems (Optional, for UI demo)
-    println!("Fetching available Rithmic Systems...");
+    info!("Fetching available Rithmic Systems...");
     match client.list_systems().await {
         Ok(systems) => {
-            println!("--- Available Systems ---");
+            info!("--- Available Systems ---");
             for sys in systems {
-                println!(" - {}", sys);
+                info!(" - {}", sys);
             }
-            println!("-------------------------");
+            info!("-------------------------");
         }
-        Err(e) => println!("Failed to list systems (non-fatal): {}", e),
+        Err(e) => warn!("Failed to list systems (non-fatal): {:?}", e),
     }
     
     // 2. Connect (Discovery -> Login)
     let mut event_rx = client.connect().await?;
     
-    println!("Connected! Subscribing to ESZ5 (CME)...");
+    info!("Connected! Subscribing to ESZ5 (CME)...");
     
     // 3. Subscribe
     client.subscribe_market_data("ESZ5", "CME", None).await?;
     
-    println!("Subscribed. Waiting for data (Press Ctrl+C to stop)...");
+    info!("Subscribed. Waiting for data (Press Ctrl+C to stop)...");
 
     loop {
         tokio::select! {
@@ -43,24 +45,24 @@ async fn main() -> Result<(), anyhow::Error> {
                     Some(response) => {
                         match response.message {
                             RithmicMessage::LastTrade(trade) => {
-                                println!("TRADE: {} @ {} (Vol: {})", trade.symbol(), trade.trade_price(), trade.trade_size());
+                                info!("TRADE: {} @ {} (Vol: {})", trade.symbol(), trade.trade_price(), trade.trade_size());
                             }
                             RithmicMessage::BestBidOffer(bbo) => {
-                                println!("BBO: {} Bid: {} Ask: {}", bbo.symbol(), bbo.bid_price(), bbo.ask_price());
+                                info!("BBO: {} Bid: {} Ask: {}", bbo.symbol(), bbo.bid_price(), bbo.ask_price());
                             }
                             _ => {
-                                // println!("Other message: {:?}", response.message);
+                                debug!("Other message: {:?}", response.message);
                             }
                         }
                     }
                     None => {
-                        println!("Event stream closed.");
+                        info!("Event stream closed.");
                         break;
                     }
                 }
             }
             _ = signal::ctrl_c() => {
-                println!("Stopping...");
+                info!("Stopping...");
                 break;
             }
         }

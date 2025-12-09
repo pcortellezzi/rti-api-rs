@@ -5,6 +5,7 @@ mod compliance {
     use std::collections::{HashSet, HashMap};
     use std::path::Path;
     use std::process::Command;
+    use tracing::{error, warn};
 
     struct ApiSpec {
         id: i32,
@@ -36,14 +37,14 @@ mod compliance {
             }
         }
         
-        eprintln!("Could not find or execute pdftotext.exe. Please install poppler or update the path.");
+        error!("Could not find or execute pdftotext.exe. Please install poppler or update the path.");
         None
     }
 
     fn extract_specs_from_pdf() -> Vec<ApiSpec> {
         let path = Path::new("src/proto/Reference_Guide.pdf");
         if !path.exists() {
-            eprintln!("Skipping compliance test: Reference_Guide.pdf not found at {:?}", path);
+            warn!("Skipping compliance test: Reference_Guide.pdf not found at {:?}", path);
             return vec![];
         }
 

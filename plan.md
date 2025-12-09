@@ -1,65 +1,44 @@
-# Roadmap Rithmic-RS
+## Plan de Migration vers `eyre` pour la Gestion des Erreurs et Uniformisation de `tracing`
 
-This document outlines the roadmap to build a robust, production-ready Rithmic connector in Rust.
+**Objectif :** Remplacer `anyhow` par `eyre` pour une gestion des erreurs plus riche et s'assurer que `tracing` est utilisé de manière cohérente pour la journalisation dans l'ensemble du projet.
 
-## Phase 1: Core Architecture & Cleanup (Completed)
-- [x] **Dependency Cleanup**: Removed `kameo`, consolidated on `tokio`, `prost`, `tokio-tungstenite`.
-- [x] **Transport Layer**: SSL/TLS WebSockets via `tokio-tungstenite`.
-- [x] **Protocol Handling**: Protobuf serialization/deserialization (`api/decoder.rs`, `sender_api.rs`).
-- [x] **Event Loop**: Worker pattern for handling socket events (`plants/worker.rs`).
-- [x] **Unified Client**: `RithmicClient` managing Ticker, History, and Order plants.
+### Étapes de la Migration :
 
-## Phase 2: Essential Features (Completed)
-- [x] **PnL & Position Plant Integration**:
-    - [x] Added `pnl_tx` channel to `RithmicClient`.
-    - [x] Connected to PnL Plant in `connect()` method.
-    - [x] Implemented `subscribe_pnl` and `request_pnl_snapshot`.
-- [x] **Heartbeat Mechanism**:
-    - [x] Implemented automatic heartbeat sending in `plants/worker.rs` (Verified).
-    - [x] Handled heartbeat responses (silently).
-- [x] **Reference Data**:
-    - [x] Implemented `request_reference_data`.
-    - [x] Implemented `search_symbols`.
-    - [x] Exposed `get_reference_data` and `search_symbols` in `RithmicClient`.
+1.  **Mise à Jour de `Cargo.toml`**
+    *   Ajouter `eyre = "0.6"` comme dépendance.
+    *   Supprimer la dépendance `anyhow`.
+    *   Vérifier que `tracing` et `tracing-subscriber` sont présents et configurés.
 
-## Phase 3: Extended Functionality
-- [x] **Advanced Order Management**:
-    - [x] Bracket Orders (`request_bracket_order`).
-    - [x] OCO (One-Cancels-Other) Orders.
-    - [x] Order History retrieval (`request_show_order_history`).
-- [x] **Search & Metadata**:
-    - [x] `request_search_symbols` for symbol lookup.
-    - [x] `request_front_month_contract`.
-- [ ] **Resiliency**:
-    - [ ] Auto-reconnection logic for dropped plant connections.
-    - [ ] Better error handling for "BAD" response codes.
+2.  **Migration du Code de Gestion des Erreurs (`anyhow` vers `eyre`)**
 
-## Phase 4: Comprehensive Testing & Verification (Completed)
-- [x] **Deep Unit Testing**:
-    - [x] `RithmicSenderApi`: Verify Protobuf message generation for ALL request types.
-    - [x] `Decoder`: Verify decoding of key response types.
-- [x] **Refactoring**:
-    - [x] Implemented Parameter Structs (`OrderParams`, etc.) to fix `too_many_arguments` clippy warnings and improve API DX.
-    - [x] Refactored `RithmicCredentials` to support manual instantiation and flexible environment suffixes (e.g., `_TEST`).
-    - [x] Removed `trade_route` from public API surface (auto-resolved by client).
-- [x] **Integration Logic Verification**:
-    - [x] Verified `client.rs` mappings and error handling via compilation and type checking.
-    - [x] Integration tests passed (skipped gracefully when env vars missing).
+    *   **Recherche et Remplacement Global (avec vérification contextuelle) :**
+        *   Remplacer `anyhow::Error` par `eyre::Report`.
+        *   Remplacer `Result<(), anyhow::Error>` par `eyre::Result<()>`.
+        *   Remplacer `anyhow::anyhow!(...)` par `eyre!(...)`.
+        *   Remplacer `.context(...)` et `.wrap_err(...)` par leurs équivalents `eyre` si nécessaire (la syntaxe est souvent similaire).
+        *   Mettre à jour les `use anyhow::*` en `use eyre::{eyre, Report, Result}` ou similaire.
+        *   Vérifier toutes les fonctions qui retournent `Result` et ajuster les types génériques si elles utilisaient `anyhow::Error`.
 
-## Phase 5: Polishing (Completed)
-- [x] **Configuration**:
-    - [x] Removed hardcoded `RithmicConnectionSystem` enum.
-    - [x] Implemented auto-discovery override for "Rithmic Test" system.
-- [x] **Resiliency**:
-    - [x] Error handling improved via typed Result returns.
-- [x] **Compliance Testing**:
-    - [x] Added `tests/compliance.rs` using `pdftotext.exe` to validate API coverage against `Reference_Guide.pdf`.
-    - [x] Achieved detection of 144/144 templates from PDF specs with accurate name parsing.
-- [x] **Final Review**:
-    - [x] Code cleanup (clippy).
-    - [x] Documentation review (examples updated).
+    *   **Fichiers Cibles Principaux :**
+        *   `src/client.rs`
+        *   `src/ws.rs`
+        *   `src/plants/worker.rs`
+        *   `examples/full_usage.rs`
+        *   `examples/simple_market_data.rs`
+        *   Les fichiers de tests (e.g., `tests/compliance.rs`, `tests/receiver_api_tests.rs`, `tests/integration_test.rs`)
 
-## Current Status Assessment
-- **API Completeness**: Very High. Feature complete.
-- **Code Quality**: Excellent. Strongly typed parameter objects used for complex requests. No clippy warnings. Authentication logic is flexible and supports multiple environments.
-- **Testing**: 100% coverage of message generation logic. Integration tests configured for `_TEST` environment. Compliance test validates spec alignment.
+3.  **Uniformisation de l'Utilisation de `tracing`**
+
+    *   **Vérification de l'Initialisation :** S'assurer que `tracing_subscriber::fmt::init();` est appelé une seule fois au début de `main` ou du point d'entrée principal.
+    *   **Utilisation Cohérente des Macros :** Examiner tous les fichiers pour s'assurer que la journalisation utilise systématiquement les macros `tracing::info!`, `tracing::debug!`, `tracing::error!`, `tracing::warn!`, etc., au lieu de `println!` ou `eprintln!` non-formatés.
+    *   **Passage des `Result` :** Utiliser `Result.map_err(|e| error!("{:#}", e))` ou `Result.wrap_err_with(...)` pour logger les erreurs de manière structurée avec `tracing`.
+
+4.  **Vérification et Tests**
+    *   Compiler le projet (`cargo check`).
+    *   Exécuter les tests (`cargo test`).
+    *   Lancer les exemples (`cargo run --example full_usage`).
+
+**Considérations :**
+*   **Types de Retour :** `eyre::Result` est un alias pour `Result<T, eyre::Report>`, donc les signatures de fonction devront être mises à jour.
+*   **Propagation des Erreurs :** S'assurer que l'opérateur `?` propage correctement les `eyre::Report`.
+*   **Messages d'Erreur :** `eyre` offre un formatage d'erreur supérieur, notamment avec le trait `Debug` pour `Report`, ce qui sera un avantage pour le débogage.

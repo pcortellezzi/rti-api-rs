@@ -4,6 +4,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{timeout, Duration};
 use tracing::{info, error, debug, warn};
 
+use eyre::{eyre, Report, Result};
 use crate::api::receiver_api::{decode_message, RithmicResponse};
 use crate::api::sender_api::RithmicSenderApi;
 use crate::connection_info::{AccountInfo, RithmicCredentials, BOOTSTRAP_URL};
@@ -63,7 +64,7 @@ impl RithmicClient {
     }
 
     /// Connect to Rithmic System.
-    pub async fn connect(&mut self) -> Result<mpsc::Receiver<RithmicResponse>, anyhow::Error> {
+    pub async fn connect(&mut self) -> Result<mpsc::Receiver<RithmicResponse>, Report> {
         info!("Starting Rithmic Connection Sequence");
 
         // 1. Determine Gateway URI
@@ -131,7 +132,7 @@ impl RithmicClient {
         Ok(event_rx)
     }
 
-    async fn populate_trade_routes_cache(&self) -> Result<(), anyhow::Error> {
+    async fn populate_trade_routes_cache(&self) -> Result<(), Report> {
         let routes = self.list_trade_routes().await?;
         for r in routes {
             // Store exchange -> trade_route. First one wins.
@@ -143,7 +144,7 @@ impl RithmicClient {
         Ok(())
     }
 
-    async fn fetch_accounts(&mut self) -> Result<(), anyhow::Error> {
+    async fn fetch_accounts(&mut self) -> Result<(), Report> {
         if let Some(tx) = &self.order_tx {
              let mut sender = self.sender_api.lock().await;
              let (buf, req_id) = sender.request_account_list(&self.account_info);
@@ -155,7 +156,7 @@ impl RithmicClient {
                  request_id: req_id,
                  reply_tx: Some(reply_tx),
                  stream_tx: None, // This is a single response
-             }).await.map_err(|_| anyhow::anyhow!("Order worker unreachable"))?;
+             }).await.map_err(|_| eyre!("Order worker unreachable"))?;
 
              match timeout(Duration::from_secs(10), reply_rx).await {
                  Ok(Ok(Ok(resp))) => {
@@ -169,12 +170,12 @@ impl RithmicClient {
                      }
                      Ok(())
                  },
-                 Ok(Ok(Err(e))) => Err(anyhow::anyhow!("Fetch Accounts failed: {}", e)),
-                 Ok(Err(_)) => Err(anyhow::anyhow!("Fetch Accounts worker error")),
-                 Err(_) => Err(anyhow::anyhow!("Fetch Accounts timeout")),
+                 Ok(Ok(Err(e))) => Err(eyre!("Fetch Accounts failed: {}", e)),
+                 Ok(Err(_)) => Err(eyre!("Fetch Accounts worker error")),
+                 Err(_) => Err(eyre!("Fetch Accounts timeout")),
              }
         } else {
-            Err(anyhow::anyhow!("Order Plant not connected, cannot fetch accounts"))
+            Err(eyre!("Order Plant not connected, cannot fetch accounts"))
         }
     }
 
@@ -185,7 +186,7 @@ impl RithmicClient {
         symbol: &str,
         exchange: &str,
         fields: Option<Vec<crate::MarketDataField>>
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), Report> {
         let mut sender = self.sender_api.lock().await;
         let sub_fields = fields.unwrap_or_else(|| vec![UpdateBits::LastTrade, UpdateBits::Bbo]);
         let (buf, req_id) = sender.request_market_data_update(symbol, exchange, sub_fields, Request::Subscribe);
@@ -198,7 +199,7 @@ impl RithmicClient {
         &self,
         symbol: &str,
         exchange: &str,
-    ) -> Result<crate::rti::ResponseFrontMonthContract, anyhow::Error> {
+    ) -> Result<crate::rti::ResponseFrontMonthContract, Report> {
         let mut sender = self.sender_api.lock().await;
         // We request updates=false because we just want the current front month info, typically.
         let (buf, req_id) = sender.request_front_month_contract(symbol, exchange, false);
@@ -212,7 +213,7 @@ impl RithmicClient {
                  request_id: req_id,
                  reply_tx: Some(reply_tx),
                  stream_tx: None,
-             }).await.map_err(|_| anyhow::anyhow!("Ticker plant unreachable"))?;
+             }).await.map_err(|_| eyre!("Ticker plant unreachable"))?;
 
              match timeout(Duration::from_secs(10), reply_rx).await {
                  Ok(Ok(res)) => {
@@ -221,17 +222,17 @@ impl RithmicClient {
                              if let RithmicMessage::ResponseFrontMonthContract(data) = resp.message {
                                  Ok(data)
                              } else {
-                                 Err(anyhow::anyhow!("Unexpected response type: {:?}", resp.message))
+                                 Err(eyre!("Unexpected response type: {:?}", resp.message))
                              }
                          },
-                         Err(e) => Err(anyhow::anyhow!("Rithmic Error: {}", e)),
+                         Err(e) => Err(eyre!("Rithmic Error: {}", e)),
                      }
                  },
-                 Ok(Err(e)) => Err(anyhow::anyhow!("Request failed: {}", e)),
-                 Err(_) => Err(anyhow::anyhow!("Timeout waiting for front month contract")),
+                 Ok(Err(e)) => Err(eyre!("Request failed: {}", e)),
+                 Err(_) => Err(eyre!("Timeout waiting for front month contract")),
              }
         } else {
-            Err(anyhow::anyhow!("Ticker plant not connected"))
+            Err(eyre!("Ticker plant not connected"))
         }
     }
 
@@ -243,7 +244,7 @@ impl RithmicClient {
         exchange: &str,
         start_time: i32,
         end_time: i32
-    ) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, anyhow::Error> { // Now returns a receiver
+    ) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, Report> { // Now returns a receiver
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_tick_bar_replay(exchange.to_string(), symbol.to_string(), start_time, end_time);
         drop(sender);
@@ -258,7 +259,7 @@ impl RithmicClient {
         period: i32,
         start_time: i32,
         end_time: i32
-    ) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, anyhow::Error> { // Now returns a receiver
+    ) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, Report> { // Now returns a receiver
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_time_bar_replay(exchange.to_string(), symbol.to_string(), bar_type, period, start_time, end_time);
         drop(sender);
@@ -267,7 +268,7 @@ impl RithmicClient {
 
     // --- Orders ---
 
-    async fn subscribe_order_updates(&self) -> Result<(), anyhow::Error> {
+    async fn subscribe_order_updates(&self) -> Result<(), Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_subscribe_for_order_updates(&self.account_info);
         drop(sender);
@@ -277,11 +278,11 @@ impl RithmicClient {
         pub async fn submit_order(
             &self,
             params: OrderParams,
-        ) -> Result<(), anyhow::Error> {
+        ) -> Result<(), Report> {
             let route = if let Some(r) = self.trade_routes_cache.get(&params.exchange) {
                 r.value().clone()
             } else {
-                return Err(anyhow::anyhow!("Trade route not found in cache for exchange '{}'.", params.exchange));
+                return Err(eyre!("Trade route not found in cache for exchange '{}'.", params.exchange));
             };
 
             let mut sender = self.sender_api.lock().await;
@@ -290,21 +291,21 @@ impl RithmicClient {
 
             self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
         }
-    pub async fn cancel_order(&self, order_id: &str) -> Result<(), anyhow::Error> {
+    pub async fn cancel_order(&self, order_id: &str) -> Result<(), Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_cancel_order(&self.account_info, order_id);
         drop(sender);
         self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
     }
 
-    pub async fn cancel_all_orders(&self) -> Result<(), anyhow::Error> {
+    pub async fn cancel_all_orders(&self) -> Result<(), Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_cancel_all_orders(&self.account_info);
         drop(sender);
         self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
     }
 
-    pub async fn list_orders(&self) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, anyhow::Error> {
+    pub async fn list_orders(&self) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_show_orders(&self.account_info);
         drop(sender);
@@ -318,7 +319,7 @@ impl RithmicClient {
     pub async fn get_order_history(
         &self,
         basket_id: Option<&str>
-    ) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, anyhow::Error> {
+    ) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_show_order_history(&self.account_info, basket_id);
         drop(sender);
@@ -328,7 +329,7 @@ impl RithmicClient {
     pub async fn modify_order(
         &self,
         params: ModifyOrderParams
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_modify_order(&self.account_info, params);
         drop(sender);
@@ -338,11 +339,11 @@ impl RithmicClient {
     pub async fn place_bracket_order(
         &self,
         params: BracketOrderParams
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), Report> {
         let route = if let Some(r) = self.trade_routes_cache.get(&params.exchange) {
             r.value().clone()
         } else {
-            return Err(anyhow::anyhow!("Trade route not found in cache for exchange '{}'.", params.exchange));
+            return Err(eyre!("Trade route not found in cache for exchange '{}'.", params.exchange));
         };
 
         let mut sender = self.sender_api.lock().await;
@@ -355,12 +356,12 @@ impl RithmicClient {
     pub async fn place_oco_order(
         &self,
         params: OcoOrderParams
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), Report> {
         // Assuming same exchange for route lookup
         let route = if let Some(r) = self.trade_routes_cache.get(&params.leg1.exchange) {
             r.value().clone()
         } else {
-            return Err(anyhow::anyhow!("Trade route not found in cache for exchange '{}'.", params.leg1.exchange));
+            return Err(eyre!("Trade route not found in cache for exchange '{}'.", params.leg1.exchange));
         };
 
         let mut sender = self.sender_api.lock().await;
@@ -369,7 +370,7 @@ impl RithmicClient {
         self.send_single_command_to_plant(&self.order_tx, "Order", buf, req_id).await
     }
 
-    pub async fn list_trade_routes(&self) -> Result<Vec<TradeRouteInfo>, anyhow::Error> {
+    pub async fn list_trade_routes(&self) -> Result<Vec<TradeRouteInfo>, Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_trade_routes();
         drop(sender);
@@ -392,13 +393,13 @@ impl RithmicClient {
                         }
                     }
                 },
-                Err(e) => return Err(anyhow::anyhow!("Error receiving trade route: {}", e)),
+                Err(e) => return Err(eyre!("Error receiving trade route: {}", e)),
             }
         }
         Ok(routes)
     }
 
-    pub async fn list_systems(&self) -> Result<Vec<String>, anyhow::Error> {
+    pub async fn list_systems(&self) -> Result<Vec<String>, Report> {
         info!("Listing Systems from bootstrap URL: {}", BOOTSTRAP_URL);
         let mut stream = connect(BOOTSTRAP_URL).await?;
         let mut sender = self.sender_api.lock().await;
@@ -430,7 +431,7 @@ impl RithmicClient {
                          }
                      }
                      Ok(None) => break,
-                     Err(e) => return Err(anyhow::anyhow!("Socket error: {}", e)),
+                     Err(e) => return Err(eyre!("Socket error: {}", e)),
                  }
             }
             Ok(())
@@ -443,7 +444,7 @@ impl RithmicClient {
                 if !systems.is_empty() {
                     Ok(systems)
                 } else {
-                    Err(anyhow::anyhow!("Timeout listing systems"))
+                    Err(eyre!("Timeout listing systems"))
                 }
             }
         }
@@ -451,21 +452,21 @@ impl RithmicClient {
 
     // --- PnL ---
 
-    pub async fn subscribe_pnl(&self) -> Result<(), anyhow::Error> {
+    pub async fn subscribe_pnl(&self) -> Result<(), Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_pnl_position_updates(&self.account_info, true);
         drop(sender);
         self.send_single_command_to_plant(&self.pnl_tx, "PnL", buf, req_id).await
     }
 
-    pub async fn unsubscribe_pnl(&self) -> Result<(), anyhow::Error> {
+    pub async fn unsubscribe_pnl(&self) -> Result<(), Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_pnl_position_updates(&self.account_info, false);
         drop(sender);
         self.send_single_command_to_plant(&self.pnl_tx, "PnL", buf, req_id).await
     }
 
-    pub async fn request_pnl_snapshot(&self) -> Result<(), anyhow::Error> {
+    pub async fn request_pnl_snapshot(&self) -> Result<(), Report> {
          let mut sender = self.sender_api.lock().await;
          let (buf, req_id) = sender.request_pnl_position_snapshot(&self.account_info);
          drop(sender);
@@ -479,7 +480,7 @@ impl RithmicClient {
         search_text: &str,
         instrument_type: Option<crate::rti::request_search_symbols::InstrumentType>,
         pattern: Option<crate::rti::request_search_symbols::Pattern>
-    ) -> Result<Vec<String>, anyhow::Error> {
+    ) -> Result<Vec<String>, Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_search_symbols(search_text, instrument_type, pattern);
         drop(sender);
@@ -501,13 +502,13 @@ impl RithmicClient {
                          }
                      }
                  },
-                 Err(e) => return Err(anyhow::anyhow!("Search failed: {}", e)),
+                 Err(e) => return Err(eyre!("Search failed: {}", e)),
              }
         }
         Ok(results)
     }
 
-    pub async fn get_reference_data(&self, symbol: &str, exchange: &str) -> Result<crate::rti::ResponseReferenceData, anyhow::Error> {
+    pub async fn get_reference_data(&self, symbol: &str, exchange: &str) -> Result<crate::rti::ResponseReferenceData, Report> {
         let mut sender = self.sender_api.lock().await;
         let (buf, req_id) = sender.request_reference_data(symbol, exchange);
         drop(sender);
@@ -521,7 +522,7 @@ impl RithmicClient {
                  request_id: req_id,
                  reply_tx: Some(reply_tx),
                  stream_tx: None,
-             }).await.map_err(|_| anyhow::anyhow!("Ticker plant unreachable"))?;
+             }).await.map_err(|_| eyre!("Ticker plant unreachable"))?;
 
              match timeout(Duration::from_secs(10), reply_rx).await {
                  Ok(Ok(res)) => {
@@ -530,22 +531,22 @@ impl RithmicClient {
                              if let RithmicMessage::ResponseReferenceData(data) = resp.message {
                                  Ok(data)
                              } else {
-                                 Err(anyhow::anyhow!("Unexpected response type: {:?}", resp.message))
+                                 Err(eyre!("Unexpected response type: {:?}", resp.message))
                              }
                          },
-                         Err(e) => Err(anyhow::anyhow!("Rithmic Error: {}", e)),
+                         Err(e) => Err(eyre!("Rithmic Error: {}", e)),
                      }
                  },
-                 Ok(Err(e)) => Err(anyhow::anyhow!("Request failed: {}", e)),
-                 Err(_) => Err(anyhow::anyhow!("Timeout waiting for reference data")),
+                 Ok(Err(e)) => Err(eyre!("Request failed: {}", e)),
+                 Err(_) => Err(eyre!("Timeout waiting for reference data")),
              }
         } else {
-            Err(anyhow::anyhow!("Ticker plant not connected"))
+            Err(eyre!("Ticker plant not connected"))
         }
     }
 
     #[allow(clippy::collapsible_if)]
-    async fn discover_gateway(&self) -> Result<String, anyhow::Error> {
+    async fn discover_gateway(&self) -> Result<String, Report> {
         // Special handling for Rithmic Test environment
         if self.credentials.system_name == "Rithmic Test" {
             info!("System is 'Rithmic Test', utilizing hardcoded test gateway.");
@@ -574,7 +575,7 @@ impl RithmicClient {
                                     if let RithmicMessage::ResponseRithmicSystemGatewayInfo(info) = resp.message {
                                         let server = info.gateway_uri.first().cloned().unwrap_or_default();
                                         if server.is_empty() {
-                                            return Err(anyhow::anyhow!("Empty server name in gateway info"));
+                                            return Err(eyre!("Empty server name in gateway info"));
                                         }
                                         let uri = if server.starts_with("wss://") || server.starts_with("ws://") {
                                             server
@@ -586,18 +587,18 @@ impl RithmicClient {
                                 }
                                 if let Some(err) = resp.error {
                                     if resp.request_id == gw_id {
-                                        return Err(anyhow::anyhow!("Gateway Request Rejected: {}", err));
+                                        return Err(eyre!("Gateway Request Rejected: {}", err));
                                     }
                                 }
                             }
                             Err(e) => {
                                 if e.request_id == gw_id {
-                                    return Err(anyhow::anyhow!("Discovery request failed: {:?}", e.error));
+                                    return Err(eyre!("Discovery request failed: {:?}", e.error));
                                 }
                             }
                         }
                     }
-                    Ok(None) => return Err(anyhow::anyhow!("Connection closed by server during discovery")),
+                    Ok(None) => return Err(eyre!("Connection closed by server during discovery")),
                     Err(e) => return Err(e),
                 }
             }
@@ -605,7 +606,7 @@ impl RithmicClient {
 
         match loop_result {
             Ok(res) => res,
-            Err(_) => Err(anyhow::anyhow!("Discovery timed out after 10s")),
+            Err(_) => Err(eyre!("Discovery timed out after 10s")),
         }
     }
 
@@ -615,7 +616,7 @@ impl RithmicClient {
         url: &str,
         infra_type: SysInfraType,
         event_tx: mpsc::Sender<RithmicResponse>,
-    ) -> Result<mpsc::Sender<WorkerCommand>, anyhow::Error> {
+    ) -> Result<mpsc::Sender<WorkerCommand>, Report> {
         info!("Initializing {}", name);
 
         let mut sender = self.sender_api.lock().await;
@@ -652,15 +653,15 @@ impl RithmicClient {
 
                 debug!("Login confirmed for {}. Info: {:?}", name, self.account_info);
             },
-            Ok(Ok(Err(e))) => return Err(anyhow::anyhow!("Login refused by Rithmic: {}", e)),
-            Ok(Err(_)) => return Err(anyhow::anyhow!("Worker failed to send login status")),
-            Err(_) => return Err(anyhow::anyhow!("Login status timed out")),
+            Ok(Ok(Err(e))) => return Err(eyre!("Login refused by Rithmic: {}", e)),
+            Ok(Err(_)) => return Err(eyre!("Worker failed to send login status")),
+            Err(_) => return Err(eyre!("Login status timed out")),
         }
 
         Ok(cmd_tx)
     }
 
-    async fn send_single_command_to_plant(&self, tx_option: &Option<mpsc::Sender<WorkerCommand>>, plant_name: &str, payload: Vec<u8>, request_id: String) -> Result<(), anyhow::Error> {
+    async fn send_single_command_to_plant(&self, tx_option: &Option<mpsc::Sender<WorkerCommand>>, plant_name: &str, payload: Vec<u8>, request_id: String) -> Result<(), Report> {
         if let Some(tx) = tx_option {
             let (reply_tx, reply_rx) = oneshot::channel();
 
@@ -669,25 +670,25 @@ impl RithmicClient {
                 request_id,
                 reply_tx: Some(reply_tx),
                 stream_tx: None,
-            }).await.map_err(|_| anyhow::anyhow!("{} worker unreachable", plant_name))?;
+            }).await.map_err(|_| eyre!("{} worker unreachable", plant_name))?;
 
             match reply_rx.await {
                 Ok(Ok(resp)) => {
                      if let Some(err) = resp.error {
-                         return Err(anyhow::anyhow!("Rithmic Error: {}", err));
+                         return Err(eyre!("Rithmic Error: {}", err));
                      }
                      Ok(())
                 },
-                Ok(Err(e)) => Err(anyhow::anyhow!("Request failed: {}", e)),
-                Err(_) => Err(anyhow::anyhow!("Worker dropped the request")),
+                Ok(Err(e)) => Err(eyre!("Request failed: {}", e)),
+                Err(_) => Err(eyre!("Worker dropped the request")),
             }
         } else {
-            Err(anyhow::anyhow!("{} plant not connected", plant_name))
+            Err(eyre!("{} plant not connected", plant_name))
         }
     }
 
     // New method for streaming responses
-    async fn send_stream_command_to_plant(&self, tx_option: &Option<mpsc::Sender<WorkerCommand>>, plant_name: &str, payload: Vec<u8>, request_id: String) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, anyhow::Error> {
+    async fn send_stream_command_to_plant(&self, tx_option: &Option<mpsc::Sender<WorkerCommand>>, plant_name: &str, payload: Vec<u8>, request_id: String) -> Result<mpsc::Receiver<Result<RithmicResponse, String>>, Report> {
         if let Some(tx) = tx_option {
             let (stream_tx, stream_rx) = mpsc::channel(1000); // Buffer for stream
 
@@ -696,11 +697,11 @@ impl RithmicClient {
                 request_id,
                 reply_tx: None, // No single reply expected
                 stream_tx: Some(stream_tx),
-            }).await.map_err(|_| anyhow::anyhow!("{} worker unreachable", plant_name))?;
+            }).await.map_err(|_| eyre!("{} worker unreachable", plant_name))?;
 
             Ok(stream_rx)
         } else {
-            Err(anyhow::anyhow!("{} plant not connected", plant_name))
+            Err(eyre!("{} plant not connected", plant_name))
         }
     }
 }

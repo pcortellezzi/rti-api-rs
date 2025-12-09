@@ -6,9 +6,11 @@ use rti_api_rs::{
     connection_info::RithmicCredentials,
 };
 use std::env;
+use eyre::{Report, Result};
+use tracing::{info, error};
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> Result<(), Report> {
     // 1. Setup Logging
     tracing_subscriber::fmt::init();
 
@@ -34,7 +36,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // Optional: Set direct URL if known/needed
     // let credentials = credentials.with_direct_url("wss://rituz00100.rithmic.com:443");
 
-    println!("Connecting to {} as {}", credentials.system_name, credentials.user);
+    info!("Connecting to {} as {}", credentials.system_name, credentials.user);
 
     // 3. Initialize Client
     let mut client = RithmicClient::new(credentials);
@@ -44,17 +46,17 @@ async fn main() -> Result<(), anyhow::Error> {
     // Returns a receiver channel for all asynchronous events (Market Data, Order Updates, etc.)
     let mut event_rx = client.connect().await?;
     
-    println!("Connected! Account: {:?}", client.account_info);
+    info!("Connected! Account: {:?}", client.account_info);
 
     // 5. Spawn a task to handle incoming events
     tokio::spawn(async move {
         while let Some(response) = event_rx.recv().await {
             match response.message {
                 RithmicMessage::LastTrade(trade) => {
-                    println!("Trade: {} @ {}", trade.symbol.unwrap_or_default(), trade.trade_price.unwrap_or(0.0));
+                    info!("Trade: {} @ {}", trade.symbol.unwrap_or_default(), trade.trade_price.unwrap_or(0.0));
                 },
                 RithmicMessage::RithmicOrderNotification(notify) => {
-                    println!("Order Update: {:?} Status: {:?}", notify.basket_id, notify.status);
+                    info!("Order Update: {:?} Status: {:?}", notify.basket_id, notify.status);
                 },
                 _ => {
                     // Handle other messages
@@ -82,9 +84,9 @@ async fn main() -> Result<(), anyhow::Error> {
         user_tag: Some("my_bot_v1".to_string()),
     };
 
-    println!("Submitting Order...");
+    info!("Submitting Order...");
     if let Err(e) = client.submit_order(order).await {
-        eprintln!("Order placement failed: {}", e);
+        error!("Order placement failed: {}", e);
     }
 
     // 8. Place a Bracket Order (Entry + Profit/Stop)
@@ -102,13 +104,13 @@ async fn main() -> Result<(), anyhow::Error> {
         user_tag: Some("bracket_v1".to_string()),
     };
 
-    println!("Submitting Bracket Order...");
+    info!("Submitting Bracket Order...");
     if let Err(e) = client.place_bracket_order(bracket).await {
-        eprintln!("Bracket order failed: {}", e);
+        error!("Bracket order failed: {}", e);
     }
 
     // 9. Retrieve Order History
-    println!("Fetching Order History...");
+    info!("Fetching Order History...");
     let mut history_stream = client.get_order_history(None).await?;
     while let Some(Ok(msg)) = history_stream.recv().await {
         if let RithmicMessage::ResponseShowOrderHistory(hist) = msg.message {
@@ -118,7 +120,7 @@ async fn main() -> Result<(), anyhow::Error> {
             // Let's check the proto definition again. 
             // Actually, Rithmic streams `RithmicOrderNotification` or `ResponseShowOrderHistory` which might be just end of stream or ack.
             // The history items are usually `RithmicOrderNotification`.
-            println!("History ACK: {:?}", hist.rp_code);
+            info!("History ACK: {:?}", hist.rp_code);
         }
         if !msg.has_more { break; }
     }

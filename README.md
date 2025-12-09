@@ -17,7 +17,7 @@ Add `rti-api-rs` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rithmic-rs = "0.4.2"
+rti-api-rs = { git = "https://github.com/pcortellezzi/rti-api-rs.git", branch = "feat/unified-architecture-and-full-api" }
 ```
 
 ### Example Usage
@@ -25,7 +25,7 @@ rithmic-rs = "0.4.2"
 Here's a quick example demonstrating how to connect, subscribe to market data, and listen for incoming messages:
 
 ```rust
-use rithmic_rs::{
+use rti_api_rs::{
     RithmicClient, RithmicMessage, 
     MarketDataField, 
     connection_info::RithmicCredentials,
