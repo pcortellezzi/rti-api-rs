@@ -1,6 +1,6 @@
-//! # rithmic-rs
+//! # rti-api-rs
 //!
-//! `rithmic-rs` is a Rust client library for the Rithmic R | Protocol API.
+//! `rti-api-rs` is a Rust client library for the Rithmic R | Protocol API.
 //!
 //! ## Features
 //!

@@ -13,7 +13,7 @@ A Rust client for the Rithmic R | Protocol API, providing **100% protocol covera
 
 ## Getting Started
 
-Add `rithmic-rs` to your `Cargo.toml`:
+Add `rti-api-rs` to your `Cargo.toml`:
 
 ```toml
 [dependencies]

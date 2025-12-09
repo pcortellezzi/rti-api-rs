@@ -1,4 +1,4 @@
-use rithmic_rs::{
+use rti_api_rs::{
     api::decoder::decode_message,
     rti::{
         ResponseLogin, ResponseHeartbeat,

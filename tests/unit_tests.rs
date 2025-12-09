@@ -1,4 +1,4 @@
-use rithmic_rs::{
+use rti_api_rs::{
     api::sender_api::RithmicSenderApi,
     rti::{
         RequestLogin, RequestLogout, RequestHeartbeat,
@@ -174,7 +174,7 @@ fn test_request_trade_routes() {
 fn test_request_new_order() {
     let mut api = RithmicSenderApi::new();
     
-    let params = rithmic_rs::api::sender_api::OrderParams {
+    let params = rti_api_rs::api::sender_api::OrderParams {
         exchange: "CME".into(),
         symbol: "ESZ5".into(),
         quantity: 1,
@@ -199,7 +199,7 @@ fn test_request_new_order() {
 fn test_request_modify_order() {
     let mut api = RithmicSenderApi::new();
     
-    let params = rithmic_rs::api::sender_api::ModifyOrderParams {
+    let params = rti_api_rs::api::sender_api::ModifyOrderParams {
         basket_id: "basket1".into(),
         exchange: "CME".into(),
         symbol: "ESZ5".into(),
@@ -255,7 +255,7 @@ fn test_request_show_order_history() {
 fn test_request_bracket_order() {
     let mut api = RithmicSenderApi::new();
     
-    let params = rithmic_rs::api::sender_api::BracketOrderParams {
+    let params = rti_api_rs::api::sender_api::BracketOrderParams {
         exchange: "CME".into(),
         symbol: "ESZ5".into(),
         quantity: 1,
@@ -284,7 +284,7 @@ fn test_request_bracket_order() {
 fn test_request_oco_order() {
     let mut api = RithmicSenderApi::new();
     
-    let leg1 = rithmic_rs::api::sender_api::OcoLegParams {
+    let leg1 = rti_api_rs::api::sender_api::OcoLegParams {
         symbol: "ESZ5".into(),
         exchange: "CME".into(),
         quantity: 1,
@@ -293,7 +293,7 @@ fn test_request_oco_order() {
         price_type: PriceType::Limit,
     };
     
-    let leg2 = rithmic_rs::api::sender_api::OcoLegParams {
+    let leg2 = rti_api_rs::api::sender_api::OcoLegParams {
         symbol: "ESZ5".into(),
         exchange: "CME".into(),
         quantity: 1,
@@ -302,7 +302,7 @@ fn test_request_oco_order() {
         price_type: PriceType::Limit,
     };
 
-    let params = rithmic_rs::api::sender_api::OcoOrderParams {
+    let params = rti_api_rs::api::sender_api::OcoOrderParams {
         leg1,
         leg2,
         duration: OrderDuration::Day,

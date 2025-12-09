@@ -1,4 +1,4 @@
-use rithmic_rs::{RithmicClient, connection_info::get_credentials_from_env, RithmicMessage};
+use rti_api_rs::{RithmicClient, connection_info::get_credentials_from_env, RithmicMessage};
 use dotenv::dotenv;
 use tokio::signal;
 

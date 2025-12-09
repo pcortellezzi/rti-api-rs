@@ -1,4 +1,4 @@
-use rithmic_rs::{
+use rti_api_rs::{
     RithmicClient,
     connection_info::{get_credentials_from_env},
     RithmicMessage,

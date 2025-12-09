@@ -1,4 +1,4 @@
-use rithmic_rs::{
+use rti_api_rs::{
     RithmicClient, RithmicMessage, 
     MarketDataField, OrderDuration,
     OrderParams, BracketOrderParams, BracketType,
