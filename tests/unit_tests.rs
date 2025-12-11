@@ -1,24 +1,24 @@
+use prost::Message;
 use rti_api_rs::{
     api::sender_api::RithmicSenderApi,
-    rti::{
-        RequestLogin, RequestLogout, RequestHeartbeat,
-        RequestMarketDataUpdate, RequestSearchSymbols, RequestReferenceData,
-        RequestTickBarReplay, RequestTimeBarReplay,
-        RequestAccountList, RequestSubscribeForOrderUpdates, RequestTradeRoutes,
-        RequestNewOrder, RequestModifyOrder, RequestCancelOrder, RequestCancelAllOrders, RequestShowOrders, RequestShowOrderHistory,
-        RequestBracketOrder, RequestOcoOrder, RequestFrontMonthContract,
-        RequestPnLPositionUpdates, RequestPnLPositionSnapshot,
-        request_login::SysInfraType,
-        request_market_data_update::{Request, UpdateBits},
-        request_time_bar_replay::{BarType, TimeOrder},
-        request_search_symbols::{InstrumentType, Pattern},
-        request_new_order,
-        request_oco_order,
-    },
     connection_info::AccountInfo,
-    TransactionType, PriceType, OrderDuration, BracketType
+    rti::{
+        RequestAccountList, RequestBracketOrder, RequestCancelAllOrders,
+        RequestCancelOrder, RequestFrontMonthContract, RequestHeartbeat, RequestLogin,
+        RequestLogout, RequestMarketDataUpdate, RequestModifyOrder, RequestNewOrder,
+        RequestOcoOrder, RequestPnLPositionSnapshot,
+        RequestPnLPositionUpdates, RequestReferenceData, RequestSearchSymbols,
+        RequestShowOrderHistory, RequestShowOrders, RequestSubscribeForOrderUpdates,
+        RequestTickBarReplay, RequestTimeBarReplay, RequestTradeRoutes,
+    },
+    types::{
+        BracketOrderParams, BracketType, InstrumentType, MarketDataField, MarketDataRequestType,
+        ModifyOrderParams, OcoLegParams, OcoOrderParams, OrderDuration, OrderParams,
+        PnlPositionUpdateRequest, PriceType, SearchPattern, SysInfraType, TickBarReplayBarType,
+        TickBarReplayBarSubType, TickBarReplayDirection, TickBarReplayTimeOrder, TimeBarReplayBarType,
+        TimeBarReplayDirection, TimeBarReplayTimeOrder, TransactionType,
+    },
 };
-use prost::Message;
 
 // --- System & Auth ---
 
@@ -26,15 +26,15 @@ use prost::Message;
 fn test_request_login() {
     let mut api = RithmicSenderApi::new();
     let (buf, id) = api.request_login("System", SysInfraType::TickerPlant, "user", "pass");
-    
+
     assert_eq!(id, "1");
     let req = RequestLogin::decode(&buf[4..]).expect("Decode failed");
     assert_eq!(req.template_id, 10);
     assert_eq!(req.user.unwrap(), "user");
     assert_eq!(req.password.unwrap(), "pass");
     assert_eq!(req.system_name.unwrap(), "System");
-    assert_eq!(req.infra_type.unwrap(), SysInfraType::TickerPlant as i32);
-    assert_eq!(req.app_name.unwrap(), "rithmic-rs");
+    assert_eq!(req.infra_type.unwrap(), SysInfraType::TickerPlant as i32); // Adjusted
+    assert_eq!(req.app_name.unwrap(), "rti-api-rs");
 }
 
 #[test]
@@ -59,28 +59,41 @@ fn test_request_heartbeat() {
 fn test_request_market_data_update() {
     let mut api = RithmicSenderApi::new();
     let (buf, _) = api.request_market_data_update(
-        "ESZ5", "CME", 
-        vec![UpdateBits::LastTrade, UpdateBits::Bbo], 
-        Request::Subscribe
+        "ESZ5",
+        "CME",
+        vec![MarketDataField::LastTrade, MarketDataField::Bbo], // Adjusted
+        MarketDataRequestType::Subscribe,                       // Adjusted
     );
     let req = RequestMarketDataUpdate::decode(&buf[4..]).expect("Decode failed");
     assert_eq!(req.template_id, 100);
     assert_eq!(req.symbol.unwrap(), "ESZ5");
     assert_eq!(req.exchange.unwrap(), "CME");
-    assert_eq!(req.request.unwrap(), Request::Subscribe as i32);
+    assert_eq!(
+        req.request.unwrap(),
+        MarketDataRequestType::Subscribe as i32
+    ); // Adjusted
     // 1 (LastTrade) | 2 (BBO) = 3
-    assert_eq!(req.update_bits.unwrap(), 3);
+    assert_eq!(
+        req.update_bits.unwrap(),
+        (MarketDataField::LastTrade as u32) | (MarketDataField::Bbo as u32)
+    );
 }
 
 #[test]
 fn test_request_search_symbols() {
     let mut api = RithmicSenderApi::new();
-    let (buf, _) = api.request_search_symbols("ES", Some(InstrumentType::Future), Some(Pattern::Contains));
+    let (buf, _) = api.request_search_symbols(
+        "ES",
+        "CME",
+        "?",
+        Some(InstrumentType::Future),
+        Some(SearchPattern::Contains),
+    );
     let req = RequestSearchSymbols::decode(&buf[4..]).expect("Decode failed");
     assert_eq!(req.template_id, 109);
     assert_eq!(req.search_text.unwrap(), "ES");
-    assert_eq!(req.instrument_type.unwrap(), InstrumentType::Future as i32);
-    assert_eq!(req.pattern.unwrap(), Pattern::Contains as i32);
+    assert_eq!(req.instrument_type.unwrap(), InstrumentType::Future as i32); // Adjusted
+    assert_eq!(req.pattern.unwrap(), SearchPattern::Contains as i32); // Adjusted
 }
 
 #[test]
@@ -109,26 +122,57 @@ fn test_request_front_month_contract() {
 #[test]
 fn test_request_tick_bar_replay() {
     let mut api = RithmicSenderApi::new();
-    let (buf, _) = api.request_tick_bar_replay("CME".into(), "ESZ5".into(), 1000, 2000);
+    let (buf, _) = api.request_tick_bar_replay(
+        "CME".into(),
+        "ESZ5".into(),
+        1000,
+        2000,
+        TickBarReplayBarType::TickBar,    // Adjusted
+        TickBarReplayBarSubType::Regular, // Adjusted
+        TickBarReplayDirection::First,    // Adjusted
+        TickBarReplayTimeOrder::Forwards, // Adjusted
+    );
     let req = RequestTickBarReplay::decode(&buf[4..]).expect("Decode failed");
     assert_eq!(req.template_id, 206);
     assert_eq!(req.start_index.unwrap(), 1000);
     assert_eq!(req.finish_index.unwrap(), 2000);
+    assert_eq!(req.bar_type.unwrap(), TickBarReplayBarType::TickBar as i32); // Adjusted
+    assert_eq!(
+        req.bar_sub_type.unwrap(),
+        TickBarReplayBarSubType::Regular as i32
+    ); // Adjusted
+    assert_eq!(req.direction.unwrap(), TickBarReplayDirection::First as i32); // Adjusted
+    assert_eq!(
+        req.time_order.unwrap(),
+        TickBarReplayTimeOrder::Forwards as i32
+    ); // Adjusted
 }
 
 #[test]
 fn test_request_time_bar_replay() {
     let mut api = RithmicSenderApi::new();
     let (buf, _) = api.request_time_bar_replay(
-        "CME".into(), "ESZ5".into(), 
-        BarType::MinuteBar, 1, 
-        1000, 2000
+        "CME".into(),
+        "ESZ5".into(),
+        TimeBarReplayBarType::MinuteBar,
+        1,
+        1000,
+        2000,
+        TimeBarReplayDirection::First,    // Adjusted
+        TimeBarReplayTimeOrder::Forwards, // Adjusted
     );
     let req = RequestTimeBarReplay::decode(&buf[4..]).expect("Decode failed");
     assert_eq!(req.template_id, 202);
-    assert_eq!(req.bar_type.unwrap(), BarType::MinuteBar as i32);
+    assert_eq!(
+        req.bar_type.unwrap(),
+        TimeBarReplayBarType::MinuteBar as i32
+    ); // Adjusted
     assert_eq!(req.bar_type_period.unwrap(), 1);
-    assert_eq!(req.time_order.unwrap(), TimeOrder::Forwards as i32);
+    assert_eq!(req.direction.unwrap(), TimeBarReplayDirection::First as i32); // Adjusted
+    assert_eq!(
+        req.time_order.unwrap(),
+        TimeBarReplayTimeOrder::Forwards as i32
+    ); // Adjusted
 }
 
 // --- Order Management ---
@@ -172,16 +216,18 @@ fn test_request_trade_routes() {
 #[test]
 fn test_request_new_order() {
     let mut api = RithmicSenderApi::new();
-    
-    let params = rti_api_rs::api::sender_api::OrderParams {
+
+    let params = OrderParams {
+        // Adjusted
         exchange: "CME".into(),
         symbol: "ESZ5".into(),
         quantity: 1,
         price: 5000.0,
-        transaction_type: request_new_order::TransactionType::Buy,
-        price_type: request_new_order::PriceType::Limit,
-        duration: request_new_order::Duration::Day,
+        transaction_type: TransactionType::Buy,
+        price_type: PriceType::Limit,
+        duration: OrderDuration::Day,
         user_tag: Some("id123".into()),
+        auto: true,
     };
 
     let (buf, _) = api.request_new_order(&mock_account(), params, "route");
@@ -197,14 +243,16 @@ fn test_request_new_order() {
 #[test]
 fn test_request_modify_order() {
     let mut api = RithmicSenderApi::new();
-    
-    let params = rti_api_rs::api::sender_api::ModifyOrderParams {
+
+    let params = ModifyOrderParams {
+        // Adjusted
         basket_id: "basket1".into(),
         exchange: "CME".into(),
         symbol: "ESZ5".into(),
         quantity: 2,
         price: 5001.0,
-        price_type: request_new_order::PriceType::Limit,
+        price_type: PriceType::Limit,
+        auto: true,
     };
 
     let (buf, _) = api.request_modify_order(&mock_account(), params);
@@ -218,7 +266,7 @@ fn test_request_modify_order() {
 #[test]
 fn test_request_cancel_order() {
     let mut api = RithmicSenderApi::new();
-    let (buf, _) = api.request_cancel_order(&mock_account(), "basket1");
+    let (buf, _) = api.request_cancel_order(&mock_account(), "basket1", true);
     let req = RequestCancelOrder::decode(&buf[4..]).expect("Decode failed");
     assert_eq!(req.template_id, 316);
     assert_eq!(req.basket_id.unwrap(), "basket1");
@@ -253,8 +301,9 @@ fn test_request_show_order_history() {
 #[test]
 fn test_request_bracket_order() {
     let mut api = RithmicSenderApi::new();
-    
-    let params = rti_api_rs::api::sender_api::BracketOrderParams {
+
+    let params = BracketOrderParams {
+        // Adjusted
         exchange: "CME".into(),
         symbol: "ESZ5".into(),
         quantity: 1,
@@ -262,7 +311,7 @@ fn test_request_bracket_order() {
         transaction_type: TransactionType::Buy,
         price_type: PriceType::Limit,
         duration: OrderDuration::Day,
-        bracket_type: BracketType::TargetAndStop,
+        bracket_type: BracketType::Both, // Adjusted: TargetAndStop -> Both
         target_ticks: Some(10),
         stop_ticks: Some(20),
         user_tag: Some("my_tag".into()),
@@ -272,7 +321,7 @@ fn test_request_bracket_order() {
 
     let req = RequestBracketOrder::decode(&buf[4..]).expect("Failed to decode bracket");
     assert_eq!(req.template_id, 330);
-    assert_eq!(req.bracket_type.unwrap(), BracketType::TargetAndStop as i32);
+    assert_eq!(req.bracket_type.unwrap(), BracketType::Both as i32); // Adjusted
     assert_eq!(req.target_ticks[0], 10);
     assert_eq!(req.stop_ticks[0], 20);
     assert_eq!(req.target_quantity[0], 1);
@@ -282,8 +331,9 @@ fn test_request_bracket_order() {
 #[test]
 fn test_request_oco_order() {
     let mut api = RithmicSenderApi::new();
-    
-    let leg1 = rti_api_rs::api::sender_api::OcoLegParams {
+
+    let leg1 = OcoLegParams {
+        // Adjusted
         symbol: "ESZ5".into(),
         exchange: "CME".into(),
         quantity: 1,
@@ -291,8 +341,9 @@ fn test_request_oco_order() {
         transaction_type: TransactionType::Buy,
         price_type: PriceType::Limit,
     };
-    
-    let leg2 = rti_api_rs::api::sender_api::OcoLegParams {
+
+    let leg2 = OcoLegParams {
+        // Adjusted
         symbol: "ESZ5".into(),
         exchange: "CME".into(),
         quantity: 1,
@@ -301,7 +352,8 @@ fn test_request_oco_order() {
         price_type: PriceType::Limit,
     };
 
-    let params = rti_api_rs::api::sender_api::OcoOrderParams {
+    let params = OcoOrderParams {
+        // Adjusted
         leg1,
         leg2,
         duration: OrderDuration::Day,
@@ -314,8 +366,8 @@ fn test_request_oco_order() {
     assert_eq!(req.template_id, 328);
     assert_eq!(req.symbol.len(), 2);
     // Check conversion
-    assert_eq!(req.transaction_type[0], request_oco_order::TransactionType::Buy as i32);
-    assert_eq!(req.transaction_type[1], request_oco_order::TransactionType::Sell as i32);
+    assert_eq!(req.transaction_type[0], TransactionType::Buy as i32);
+    assert_eq!(req.transaction_type[1], TransactionType::Sell as i32);
 }
 
 // --- PnL ---
@@ -323,14 +375,26 @@ fn test_request_oco_order() {
 #[test]
 fn test_request_pnl_updates() {
     let mut api = RithmicSenderApi::new();
-    let (buf, _) = api.request_pnl_position_updates(&mock_account(), true);
+    let (buf, _) = api.request_pnl_position_updates(
+        &mock_account(),
+        true,
+    );
     let req = RequestPnLPositionUpdates::decode(&buf[4..]).expect("Decode failed");
     assert_eq!(req.template_id, 400);
-    assert_eq!(req.request.unwrap(), 1); // Subscribe
+    assert_eq!(
+        req.request.unwrap(),
+        PnlPositionUpdateRequest::Subscribe as i32
+    ); // Subscribe
 
-    let (buf, _) = api.request_pnl_position_updates(&mock_account(), false);
+    let (buf, _) = api.request_pnl_position_updates(
+        &mock_account(),
+        false,
+    );
     let req = RequestPnLPositionUpdates::decode(&buf[4..]).expect("Decode failed");
-    assert_eq!(req.request.unwrap(), 2); // Unsubscribe
+    assert_eq!(
+        req.request.unwrap(),
+        PnlPositionUpdateRequest::Unsubscribe as i32
+    ); // Unsubscribe
 }
 
 #[test]

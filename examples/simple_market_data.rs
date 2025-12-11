@@ -1,7 +1,7 @@
-use rti_api_rs::{RithmicClient, connection_info::get_credentials_from_env, RithmicMessage};
 use dotenv::dotenv;
-use tokio::signal;
 use eyre::{Report, Result};
+use rti_api_rs::{RithmicClient, RithmicMessage, connection_info::get_credentials_from_env};
+use tokio::signal;
 use tracing::{debug, info, warn};
 
 #[tokio::main]
@@ -27,15 +27,15 @@ async fn main() -> Result<(), Report> {
         }
         Err(e) => warn!("Failed to list systems (non-fatal): {:?}", e),
     }
-    
+
     // 2. Connect (Discovery -> Login)
     let mut event_rx = client.connect().await?;
-    
+
     info!("Connected! Subscribing to ESZ5 (CME)...");
-    
+
     // 3. Subscribe
     client.subscribe_market_data("ESZ5", "CME", None).await?;
-    
+
     info!("Subscribed. Waiting for data (Press Ctrl+C to stop)...");
 
     loop {

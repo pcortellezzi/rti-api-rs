@@ -2,83 +2,21 @@ use prost::Message;
 
 use crate::{
     connection_info::AccountInfo,
-    rti::{
-        *,
-        request_account_list::UserType,
-        request_login::SysInfraType,
-        request_market_data_update::{Request, UpdateBits},
-        request_tick_bar_replay::{BarSubType, BarType, Direction, TimeOrder},
-        request_time_bar_replay,
-        request_search_symbols::InstrumentType,
-        request_search_symbols::Pattern,
-        request_new_order::{TransactionType, PriceType, Duration},
-        request_bracket_order::BracketType,
+    rti::{self, *},
+    types::{
+        AccountRmsUpdateBits, BracketOrderParams, EasyToBorrowListRequestType,
+        InstrumentType, MarketDataField, MarketDataRequestType,
+        ModifyOrderParams, OcoOrderParams, OrderParams, SearchPattern,
+        SysInfraType, TickBarReplayBarType, TickBarReplayBarSubType, TickBarReplayDirection,
+        TickBarReplayTimeOrder, TickBarUpdateBarType, TickBarUpdateBarSubType,
+        TickBarUpdateRequest, TimeBarReplayBarType, TimeBarReplayDirection, TimeBarReplayTimeOrder,
+        TimeBarUpdateBarType, TimeBarUpdateRequest,
     },
 };
 
 pub const TRADE_ROUTE_LIVE: &str = "globex";
 pub const TRADE_ROUTE_DEMO: &str = "simulator";
 pub const USER_TYPE: i32 = 3;
-
-/// Parameters for submitting a standard new order
-#[derive(Debug, Clone)]
-pub struct OrderParams {
-    pub symbol: String,
-    pub exchange: String,
-    pub quantity: i32,
-    pub price: f64,
-    pub transaction_type: TransactionType,
-    pub price_type: PriceType,
-    pub duration: Duration,
-    pub user_tag: Option<String>,
-}
-
-/// Parameters for modifying an existing order
-#[derive(Debug, Clone)]
-pub struct ModifyOrderParams {
-    pub basket_id: String,
-    pub symbol: String,
-    pub exchange: String,
-    pub quantity: i32,
-    pub price: f64,
-    pub price_type: PriceType,
-}
-
-/// Parameters for a Bracket Order (Entry + Take Profit + Stop Loss)
-#[derive(Debug, Clone)]
-pub struct BracketOrderParams {
-    pub symbol: String,
-    pub exchange: String,
-    pub quantity: i32,
-    pub price: f64,
-    pub transaction_type: TransactionType,
-    pub price_type: PriceType,
-    pub duration: Duration,
-    pub bracket_type: BracketType,
-    pub target_ticks: Option<i32>,
-    pub stop_ticks: Option<i32>,
-    pub user_tag: Option<String>,
-}
-
-/// Parameters for one leg of an OCO order
-#[derive(Debug, Clone)]
-pub struct OcoLegParams {
-    pub symbol: String,
-    pub exchange: String,
-    pub quantity: i32,
-    pub price: f64,
-    pub transaction_type: TransactionType,
-    pub price_type: PriceType,
-}
-
-/// Parameters for an OCO (One-Cancels-Other) Order
-#[derive(Debug, Clone)]
-pub struct OcoOrderParams {
-    pub leg1: OcoLegParams,
-    pub leg2: OcoLegParams,
-    pub duration: Duration,
-    pub user_tag: Option<String>,
-}
 
 #[derive(Debug, Clone)]
 pub struct RithmicSenderApi {
@@ -126,7 +64,10 @@ impl RithmicSenderApi {
         self.request_to_buf(req, id)
     }
 
-    pub fn request_rithmic_system_gateway_info(&mut self, system_name: String) -> (Vec<u8>, String) {
+    pub fn request_rithmic_system_gateway_info(
+        &mut self,
+        system_name: String,
+    ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestRithmicSystemGatewayInfo {
@@ -149,13 +90,13 @@ impl RithmicSenderApi {
 
         let req = RequestLogin {
             template_id: 10,
-            template_version: Some("5.34".into()), 
+            template_version: Some("5.34".into()),
             user: Some(user.to_string()),
             password: Some(password.to_string()),
-            app_name: Some("rithmic-rs".to_string()),
-            app_version: Some("0.4.2".into()),
+            app_name: Some("rti-api-rs".to_string()),
+            app_version: Some("0.1.0".into()),
             system_name: Some(system_name.to_string()),
-            infra_type: Some(infra_type.into()),
+            infra_type: Some(request_login::SysInfraType::from(infra_type).into()),
             user_msg: vec![id.clone()],
             ..RequestLogin::default()
         };
@@ -192,26 +133,24 @@ impl RithmicSenderApi {
         &mut self,
         symbol: &str,
         exchange: &str,
-        fields: Vec<UpdateBits>,
-        request_type: Request,
+        fields: Vec<MarketDataField>,
+        request_type: MarketDataRequestType,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
-        let mut req = RequestMarketDataUpdate {
-            template_id: 100,
-            user_msg: vec![id.clone()],
-            ..RequestMarketDataUpdate::default()
-        };
-
         let mut bits = 0;
         for field in fields {
-            bits |= field as u32;
+            bits |= u32::from(field);
         }
 
-        req.symbol = Some(symbol.into());
-        req.exchange = Some(exchange.into());
-        req.request = Some(request_type.into());
-        req.update_bits = Some(bits);
+        let req = RequestMarketDataUpdate {
+            template_id: 100,
+            user_msg: vec![id.clone()],
+            symbol: Some(symbol.into()),
+            exchange: Some(exchange.into()),
+            request: Some(request_market_data_update::Request::from(request_type).into()),
+            update_bits: Some(bits),
+        };
 
         self.request_to_buf(req, id)
     }
@@ -219,8 +158,10 @@ impl RithmicSenderApi {
     pub fn request_search_symbols(
         &mut self,
         search_text: &str,
+        exchange: &str,
+        product_code: &str,
         instrument_type: Option<InstrumentType>,
-        pattern: Option<Pattern>
+        pattern: Option<SearchPattern>,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -228,9 +169,11 @@ impl RithmicSenderApi {
             template_id: 109,
             user_msg: vec![id.clone()],
             search_text: Some(search_text.into()),
-            instrument_type: instrument_type.map(|it| it.into()),
-            pattern: pattern.map(|p| p.into()),
-            ..RequestSearchSymbols::default()
+            exchange: Some(exchange.into()),
+            product_code: Some(product_code.into()),
+            instrument_type: instrument_type
+                .map(|it| request_search_symbols::InstrumentType::from(it).into()),
+            pattern: pattern.map(|p| request_search_symbols::Pattern::from(p).into()),
         };
 
         self.request_to_buf(req, id)
@@ -250,7 +193,6 @@ impl RithmicSenderApi {
             underlying_symbol: Some(underlying_symbol.into()),
             exchange: Some(exchange.into()),
             expiration_date: expiration_date.map(|s| s.into()),
-            ..RequestGetInstrumentByUnderlying::default()
         };
 
         self.request_to_buf(req, id)
@@ -261,27 +203,24 @@ impl RithmicSenderApi {
         underlying_symbol: &str,
         exchange: &str,
         expiration_date: Option<&str>,
-        fields: Vec<request_market_data_update_by_underlying::UpdateBits>,
-        request_type: request_market_data_update_by_underlying::Request,
+        fields: Vec<MarketDataField>,
+        request_type: MarketDataRequestType,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
-        let mut req = RequestMarketDataUpdateByUnderlying {
-            template_id: 105,
-            user_msg: vec![id.clone()],
-            ..RequestMarketDataUpdateByUnderlying::default()
-        };
-
         let mut bits = 0;
         for field in fields {
-            bits |= field as u32;
+            bits |= u32::from(field);
         }
-
-        req.underlying_symbol = Some(underlying_symbol.into());
-        req.exchange = Some(exchange.into());
-        req.expiration_date = expiration_date.map(|s| s.into());
-        req.request = Some(request_type.into());
-        req.update_bits = Some(bits);
+        let req = RequestMarketDataUpdateByUnderlying {
+            template_id: 105,
+            user_msg: vec![id.clone()],
+            underlying_symbol: Some(underlying_symbol.into()),
+            exchange: Some(exchange.into()),
+            expiration_date: expiration_date.map(|s| s.into()),
+            request: Some(rti::request_market_data_update_by_underlying::Request::from(request_type).into()),
+            update_bits: Some(bits),
+        };
 
         self.request_to_buf(req, id)
     }
@@ -296,7 +235,6 @@ impl RithmicSenderApi {
             template_id: 107,
             user_msg: vec![id.clone()],
             tick_size_type: tick_size_type.map(|s| s.into()),
-            ..RequestGiveTickSizeTypeTable::default()
         };
 
         self.request_to_buf(req, id)
@@ -313,8 +251,7 @@ impl RithmicSenderApi {
             template_id: 111,
             user_msg: vec![id.clone()],
             exchange: exchange.map(|s| s.into()),
-            give_toi_products_only: give_toi_products_only,
-            ..RequestProductCodes::default()
+            give_toi_products_only,
         };
 
         self.request_to_buf(req, id)
@@ -333,8 +270,7 @@ impl RithmicSenderApi {
             user_msg: vec![id.clone()],
             symbol: Some(symbol.into()),
             exchange: Some(exchange.into()),
-            depth_price: depth_price,
-            ..RequestDepthByOrderSnapshot::default()
+            depth_price,
         };
 
         self.request_to_buf(req, id)
@@ -342,7 +278,7 @@ impl RithmicSenderApi {
 
     pub fn request_depth_by_order_updates(
         &mut self,
-        request_type: request_depth_by_order_updates::Request,
+        request_type: rti::request_depth_by_order_updates::Request,
         symbol: &str,
         exchange: &str,
         depth_price: Option<f64>,
@@ -355,8 +291,7 @@ impl RithmicSenderApi {
             request: Some(request_type.into()),
             symbol: Some(symbol.into()),
             exchange: Some(exchange.into()),
-            depth_price: depth_price,
-            ..RequestDepthByOrderUpdates::default()
+            depth_price,
         };
 
         self.request_to_buf(req, id)
@@ -374,7 +309,6 @@ impl RithmicSenderApi {
             user_msg: vec![id.clone()],
             symbol: Some(symbol.into()),
             exchange: Some(exchange.into()),
-            ..RequestGetVolumeAtPrice::default()
         };
 
         self.request_to_buf(req, id)
@@ -392,7 +326,6 @@ impl RithmicSenderApi {
             user_msg: vec![id.clone()],
             symbol: Some(symbol.into()),
             exchange: Some(exchange.into()),
-            ..RequestAuxilliaryReferenceData::default()
         };
 
         self.request_to_buf(req, id)
@@ -415,7 +348,7 @@ impl RithmicSenderApi {
         &mut self,
         symbol: &str,
         exchange: &str,
-        subscribe: bool
+        subscribe: bool,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -432,41 +365,49 @@ impl RithmicSenderApi {
 
     // --- History ---
 
+    #[allow(clippy::too_many_arguments)]
     pub fn request_tick_bar_replay(
         &mut self,
         exchange: String,
         symbol: String,
         start_index_sec: i32,
         finish_index_sec: i32,
+        bar_type: TickBarReplayBarType,
+        bar_sub_type: TickBarReplayBarSubType,
+        direction: TickBarReplayDirection,
+        time_order: TickBarReplayTimeOrder,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestTickBarReplay {
             template_id: 206,
-            exchange: Some(exchange),
             symbol: Some(symbol),
-            bar_type: Some(BarType::TickBar.into()),
-            bar_sub_type: Some(BarSubType::Regular.into()),
+            exchange: Some(exchange),
+            bar_type: Some(rti::request_tick_bar_replay::BarType::from(bar_type).into()),
+            bar_sub_type: Some(rti::request_tick_bar_replay::BarSubType::from(bar_sub_type).into()),
             bar_type_specifier: Some("1".to_string()),
             start_index: Some(start_index_sec),
             finish_index: Some(finish_index_sec),
-            direction: Some(Direction::First.into()),
-            time_order: Some(TimeOrder::Forwards.into()),
+            direction: Some(rti::request_tick_bar_replay::Direction::from(direction).into()),
+            time_order: Some(rti::request_tick_bar_replay::TimeOrder::from(time_order).into()),
             user_msg: vec![id.clone()],
-            ..Default::default()
+            ..RequestTickBarReplay::default()
         };
 
         self.request_to_buf(req, id)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn request_time_bar_replay(
         &mut self,
         exchange: String,
         symbol: String,
-        bar_type: request_time_bar_replay::BarType,
+        bar_type: TimeBarReplayBarType,
         bar_type_period: i32,
         start_index_sec: i32,
         finish_index_sec: i32,
+        direction: TimeBarReplayDirection,
+        time_order: TimeBarReplayTimeOrder,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -474,14 +415,14 @@ impl RithmicSenderApi {
             template_id: 202,
             exchange: Some(exchange),
             symbol: Some(symbol),
-            bar_type: Some(bar_type.into()),
+            bar_type: Some(rti::request_time_bar_replay::BarType::from(bar_type).into()),
             bar_type_period: Some(bar_type_period),
             start_index: Some(start_index_sec),
             finish_index: Some(finish_index_sec),
-            direction: Some(request_time_bar_replay::Direction::First.into()),
-            time_order: Some(request_time_bar_replay::TimeOrder::Forwards.into()),
+            direction: Some(rti::request_time_bar_replay::Direction::from(direction).into()),
+            time_order: Some(rti::request_time_bar_replay::TimeOrder::from(time_order).into()),
             user_msg: vec![id.clone()],
-            ..Default::default()
+            ..RequestTimeBarReplay::default()
         };
 
         self.request_to_buf(req, id)
@@ -491,8 +432,8 @@ impl RithmicSenderApi {
         &mut self,
         symbol: &str,
         exchange: &str,
-        request_type: request_time_bar_update::Request,
-        bar_type: request_time_bar_update::BarType,
+        request_type: TimeBarUpdateRequest,
+        bar_type: TimeBarUpdateBarType,
         bar_type_period: i32,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
@@ -502,10 +443,9 @@ impl RithmicSenderApi {
             user_msg: vec![id.clone()],
             symbol: Some(symbol.into()),
             exchange: Some(exchange.into()),
-            request: Some(request_type.into()),
-            bar_type: Some(bar_type.into()),
+            request: Some(rti::request_time_bar_update::Request::from(request_type).into()),
+            bar_type: Some(rti::request_time_bar_update::BarType::from(bar_type).into()),
             bar_type_period: Some(bar_type_period),
-            ..RequestTimeBarUpdate::default()
         };
 
         self.request_to_buf(req, id)
@@ -516,12 +456,10 @@ impl RithmicSenderApi {
         &mut self,
         symbol: &str,
         exchange: &str,
-        request_type: request_tick_bar_update::Request,
-        bar_type: request_tick_bar_update::BarType,
-        bar_sub_type: request_tick_bar_update::BarSubType,
+        request_type: TickBarUpdateRequest,
+        bar_type: TickBarUpdateBarType,
+        bar_sub_type: TickBarUpdateBarSubType,
         bar_type_specifier: Option<&str>,
-        custom_session_open_ssm: Option<i32>,
-        custom_session_close_ssm: Option<i32>,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -530,12 +468,10 @@ impl RithmicSenderApi {
             user_msg: vec![id.clone()],
             symbol: Some(symbol.into()),
             exchange: Some(exchange.into()),
-            request: Some(request_type.into()),
-            bar_type: Some(bar_type.into()),
-            bar_sub_type: Some(bar_sub_type.into()),
+            request: Some(rti::request_tick_bar_update::Request::from(request_type).into()),
+            bar_type: Some(rti::request_tick_bar_update::BarType::from(bar_type).into()),
+            bar_sub_type: Some(rti::request_tick_bar_update::BarSubType::from(bar_sub_type).into()),
             bar_type_specifier: bar_type_specifier.map(|s| s.into()),
-            custom_session_open_ssm: custom_session_open_ssm,
-            custom_session_close_ssm: custom_session_close_ssm,
             ..RequestTickBarUpdate::default()
         };
 
@@ -550,8 +486,6 @@ impl RithmicSenderApi {
         bar_type_period: i32,
         start_index: i32,
         finish_index: i32,
-        user_max_count: Option<i32>,
-        resume_bars: Option<bool>,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -563,25 +497,19 @@ impl RithmicSenderApi {
             bar_type_period: Some(bar_type_period),
             start_index: Some(start_index),
             finish_index: Some(finish_index),
-            user_max_count: user_max_count,
-            resume_bars: resume_bars,
             ..RequestVolumeProfileMinuteBars::default()
         };
 
         self.request_to_buf(req, id)
     }
 
-    pub fn request_resume_bars(
-        &mut self,
-        request_key: &str,
-    ) -> (Vec<u8>, String) {
+    pub fn request_resume_bars(&mut self, request_key: &str) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestResumeBars {
             template_id: 210,
             user_msg: vec![id.clone()],
             request_key: Some(request_key.into()),
-            ..RequestResumeBars::default()
         };
 
         self.request_to_buf(req, id)
@@ -595,7 +523,6 @@ impl RithmicSenderApi {
         let req = RequestLoginInfo {
             template_id: 300,
             user_msg: vec![id.clone()],
-            ..RequestLoginInfo::default()
         };
 
         self.request_to_buf(req, id)
@@ -608,7 +535,7 @@ impl RithmicSenderApi {
             template_id: 302,
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
-            user_type: Some(UserType::Trader.into()),
+            user_type: Some(rti::request_account_list::UserType::Trader.into()),
             user_msg: vec![id.clone()],
         };
 
@@ -618,7 +545,7 @@ impl RithmicSenderApi {
     pub fn request_account_rms_info(
         &mut self,
         account: &AccountInfo,
-        user_type: request_account_rms_info::UserType,
+        user_type: rti::request_account_rms_info::UserType,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -628,7 +555,6 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             user_type: Some(user_type.into()),
-            ..RequestAccountRmsInfo::default()
         };
 
         self.request_to_buf(req, id)
@@ -643,13 +569,15 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            ..RequestProductRmsInfo::default()
         };
 
         self.request_to_buf(req, id)
     }
 
-    pub fn request_subscribe_for_order_updates(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
+    pub fn request_subscribe_for_order_updates(
+        &mut self,
+        account: &AccountInfo,
+    ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestSubscribeForOrderUpdates {
@@ -662,15 +590,14 @@ impl RithmicSenderApi {
 
         self.request_to_buf(req, id)
     }
-    
+
     pub fn request_trade_routes(&mut self) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
-        #[allow(clippy::needless_update)]
+        // Removed #[allow(clippy::needless_update)]
         let req = RequestTradeRoutes {
             template_id: 310,
             user_msg: vec![id.clone()],
             subscribe_for_updates: Some(true),
-            ..RequestTradeRoutes::default()
         };
         self.request_to_buf(req, id)
     }
@@ -686,21 +613,28 @@ impl RithmicSenderApi {
 
         let req = RequestNewOrder {
             template_id: 312,
+            user_msg: vec![id.clone()],
+            user_tag: params.user_tag,
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            trade_route: Some(trade_route.into()),
-            exchange: Some(params.exchange),
             symbol: Some(params.symbol),
+            exchange: Some(params.exchange),
             quantity: Some(params.quantity),
             price: Some(params.price),
-            transaction_type: Some(params.transaction_type.into()),
-            price_type: Some(params.price_type.into()),
-            duration: Some(params.duration.into()),
-            manual_or_auto: Some(2),
-            user_msg: vec![id.clone()],
-            user_tag: params.user_tag,
+            transaction_type: Some(
+                request_new_order::TransactionType::from(params.transaction_type).into(),
+            ),
+            duration: Some(request_new_order::Duration::from(params.duration).into()),
+            price_type: Some(request_new_order::PriceType::from(params.price_type).into()),
+            trade_route: Some(trade_route.into()),
+            manual_or_auto: if params.auto {
+                Some(request_new_order::OrderPlacement::Auto.into())
+            } else {
+                Some(request_new_order::OrderPlacement::Manual.into())
+            },
             ..RequestNewOrder::default()
+
         };
 
         self.request_to_buf(req, id)
@@ -710,23 +644,27 @@ impl RithmicSenderApi {
     pub fn request_modify_order(
         &mut self,
         account: &AccountInfo,
-        params: ModifyOrderParams
+        params: ModifyOrderParams,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestModifyOrder {
             template_id: 314,
+            user_msg: vec![id.clone()],
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
             basket_id: Some(params.basket_id),
-            exchange: Some(params.exchange),
             symbol: Some(params.symbol),
+            exchange: Some(params.exchange),
             quantity: Some(params.quantity),
             price: Some(params.price),
-            price_type: Some(params.price_type.into()),
-            manual_or_auto: Some(2),
-            user_msg: vec![id.clone()],
+            price_type: Some(rti::request_modify_order::PriceType::from(params.price_type).into()),
+            manual_or_auto: if params.auto {
+                Some(request_modify_order::OrderPlacement::Auto.into())
+            } else {
+                Some(request_modify_order::OrderPlacement::Manual.into())
+            },
             ..RequestModifyOrder::default()
         };
 
@@ -737,17 +675,22 @@ impl RithmicSenderApi {
         &mut self,
         account: &AccountInfo,
         basket_id: &str,
+        auto: bool,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestCancelOrder {
             template_id: 316,
+            user_msg: vec![id.clone()],
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
             basket_id: Some(basket_id.into()),
-            manual_or_auto: Some(2),
-            user_msg: vec![id.clone()],
+            manual_or_auto: if auto {
+                Some(request_cancel_order::OrderPlacement::Auto.into())
+            } else {
+                Some(request_cancel_order::OrderPlacement::Manual.into())
+            },
             ..RequestCancelOrder::default()
         };
 
@@ -760,7 +703,6 @@ impl RithmicSenderApi {
         let req = RequestShowOrderHistoryDates {
             template_id: 318,
             user_msg: vec![id.clone()],
-            ..RequestShowOrderHistoryDates::default()
         };
 
         self.request_to_buf(req, id)
@@ -771,11 +713,10 @@ impl RithmicSenderApi {
 
         let req = RequestCancelAllOrders {
             template_id: 346,
+            user_msg: vec![id.clone()],
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            manual_or_auto: Some(2),
-            user_msg: vec![id.clone()],
             ..RequestCancelAllOrders::default()
         };
 
@@ -829,7 +770,6 @@ impl RithmicSenderApi {
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
             date: Some(date.into()),
-            ..RequestShowOrderHistorySummary::default()
         };
 
         self.request_to_buf(req, id)
@@ -851,7 +791,6 @@ impl RithmicSenderApi {
             account_id: Some(account.account_id.clone()),
             basket_id: basket_id.map(|s| s.into()),
             date: Some(date.into()),
-            ..RequestShowOrderHistoryDetail::default()
         };
 
         self.request_to_buf(req, id)
@@ -865,49 +804,38 @@ impl RithmicSenderApi {
         trade_route: &str,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
-        
+
         let mut req = RequestBracketOrder {
             template_id: 330,
+            user_msg: vec![id.clone()],
+            user_tag: params.user_tag,
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            trade_route: Some(trade_route.into()),
-            exchange: Some(params.exchange),
             symbol: Some(params.symbol),
+            exchange: Some(params.exchange),
             quantity: Some(params.quantity),
             price: Some(params.price),
-            transaction_type: Some(match params.transaction_type {
-                request_new_order::TransactionType::Buy => request_bracket_order::TransactionType::Buy.into(),
-                request_new_order::TransactionType::Sell => request_bracket_order::TransactionType::Sell.into(),
-            }),
-            price_type: Some(match params.price_type {
-                request_new_order::PriceType::Limit => request_bracket_order::PriceType::Limit.into(),
-                request_new_order::PriceType::Market => request_bracket_order::PriceType::Market.into(),
-                request_new_order::PriceType::StopLimit => request_bracket_order::PriceType::StopLimit.into(),
-                request_new_order::PriceType::StopMarket => request_bracket_order::PriceType::StopMarket.into(),
-                _ => request_bracket_order::PriceType::Limit.into(), // Fallback
-            }),
-            duration: Some(match params.duration {
-                request_new_order::Duration::Day => request_bracket_order::Duration::Day.into(),
-                request_new_order::Duration::Gtc => request_bracket_order::Duration::Gtc.into(),
-                request_new_order::Duration::Ioc => request_bracket_order::Duration::Ioc.into(),
-                request_new_order::Duration::Fok => request_bracket_order::Duration::Fok.into(),
-            }),
-            manual_or_auto: Some(request_bracket_order::OrderPlacement::Auto.into()), // Usually Algo/Auto for brackets
-            bracket_type: Some(params.bracket_type.into()),
-            user_msg: vec![id.clone()],
-            user_tag: params.user_tag,
+            transaction_type: Some(
+                rti::request_bracket_order::TransactionType::from(params.transaction_type).into(),
+            ),
+            duration: Some(rti::request_bracket_order::Duration::from(params.duration).into()),
+            price_type: Some(rti::request_bracket_order::PriceType::from(params.price_type).into()),
+            trade_route: Some(trade_route.into()),
+            bracket_type: Some(
+                rti::request_bracket_order::BracketType::from(params.bracket_type).into(),
+            ),
             ..RequestBracketOrder::default()
         };
 
         if let Some(ticks) = params.target_ticks {
             req.target_ticks.push(ticks);
-            req.target_quantity.push(params.quantity); // Full exit
+            req.target_quantity.push(params.quantity);
         }
 
         if let Some(ticks) = params.stop_ticks {
             req.stop_ticks.push(ticks);
-            req.stop_quantity.push(params.quantity); // Full exit
+            req.stop_quantity.push(params.quantity);
         }
 
         self.request_to_buf(req, id)
@@ -922,41 +850,34 @@ impl RithmicSenderApi {
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
-        // Helper to convert enums
-        let cvt_action = |a| match a {
-            request_new_order::TransactionType::Buy => request_oco_order::TransactionType::Buy.into(),
-            request_new_order::TransactionType::Sell => request_oco_order::TransactionType::Sell.into(),
-        };
-        let cvt_price = |p| match p {
-            request_new_order::PriceType::Limit => request_oco_order::PriceType::Limit.into(),
-            request_new_order::PriceType::Market => request_oco_order::PriceType::Market.into(),
-            request_new_order::PriceType::StopLimit => request_oco_order::PriceType::StopLimit.into(),
-            request_new_order::PriceType::StopMarket => request_oco_order::PriceType::StopMarket.into(),
-             _ => request_oco_order::PriceType::Limit.into(),
-        };
-        let cvt_dur = match params.duration {
-            request_new_order::Duration::Day => request_oco_order::Duration::Day.into(),
-            request_new_order::Duration::Gtc => request_oco_order::Duration::Gtc.into(),
-            request_new_order::Duration::Ioc => request_oco_order::Duration::Ioc.into(),
-            request_new_order::Duration::Fok => request_oco_order::Duration::Fok.into(),
-        };
-
         let req = RequestOcoOrder {
             template_id: 328,
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            
+
             symbol: vec![params.leg1.symbol, params.leg2.symbol],
             exchange: vec![params.leg1.exchange, params.leg2.exchange],
             quantity: vec![params.leg1.quantity, params.leg2.quantity],
             price: vec![params.leg1.price, params.leg2.price],
-            transaction_type: vec![cvt_action(params.leg1.transaction_type), cvt_action(params.leg2.transaction_type)],
-            price_type: vec![cvt_price(params.leg1.price_type), cvt_price(params.leg2.price_type)],
-            duration: vec![cvt_dur, cvt_dur],
-            trade_route: vec![trade_route.into(), trade_route.into()], // Same route for both usually
-            manual_or_auto: vec![request_oco_order::OrderPlacement::Auto.into(), request_oco_order::OrderPlacement::Auto.into()],
-            
+            transaction_type: vec![
+                rti::request_oco_order::TransactionType::from(params.leg1.transaction_type).into(),
+                rti::request_oco_order::TransactionType::from(params.leg2.transaction_type).into(),
+            ], // Adjusted
+            price_type: vec![
+                rti::request_oco_order::PriceType::from(params.leg1.price_type).into(),
+                rti::request_oco_order::PriceType::from(params.leg2.price_type).into(),
+            ], // Adjusted
+            duration: vec![
+                rti::request_oco_order::Duration::from(params.duration).into(),
+                rti::request_oco_order::Duration::from(params.duration).into(),
+            ], // Adjusted
+            trade_route: vec![trade_route.into(), trade_route.into()],
+            manual_or_auto: vec![
+                rti::request_oco_order::OrderPlacement::Auto.into(),
+                rti::request_oco_order::OrderPlacement::Auto.into(),
+            ],
+
             user_msg: vec![id.clone()],
             user_tag: params.user_tag.map(|t| vec![t]).unwrap_or_default(),
             ..RequestOcoOrder::default()
@@ -983,7 +904,6 @@ impl RithmicSenderApi {
             basket_id: Some(basket_id.into()),
             level: Some(level),
             target_ticks: Some(target_ticks),
-            ..RequestUpdateTargetBracketLevel::default()
         };
 
         self.request_to_buf(req, id)
@@ -1007,13 +927,15 @@ impl RithmicSenderApi {
             basket_id: Some(basket_id.into()),
             level: Some(level),
             stop_ticks: Some(stop_ticks),
-            ..RequestUpdateStopBracketLevel::default()
         };
 
         self.request_to_buf(req, id)
     }
 
-    pub fn request_subscribe_to_bracket_updates(&mut self, account: &AccountInfo) -> (Vec<u8>, String) {
+    pub fn request_subscribe_to_bracket_updates(
+        &mut self,
+        account: &AccountInfo,
+    ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestSubscribeToBracketUpdates {
@@ -1022,7 +944,6 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            ..RequestSubscribeToBracketUpdates::default()
         };
 
         self.request_to_buf(req, id)
@@ -1037,7 +958,6 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            ..RequestShowBrackets::default()
         };
 
         self.request_to_buf(req, id)
@@ -1052,23 +972,18 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            ..RequestShowBracketStops::default()
         };
 
         self.request_to_buf(req, id)
     }
 
-    pub fn request_list_exchange_permissions(
-        &mut self,
-        user: Option<&str>,
-    ) -> (Vec<u8>, String) {
+    pub fn request_list_exchange_permissions(&mut self, user: Option<&str>) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestListExchangePermissions {
             template_id: 342,
             user_msg: vec![id.clone()],
             user: user.map(|s| s.into()),
-            ..RequestListExchangePermissions::default()
         };
 
         self.request_to_buf(req, id)
@@ -1088,7 +1003,6 @@ impl RithmicSenderApi {
             ib_id: vec![account.ib_id.clone()],
             account_id: vec![account.account_id.clone()],
             basket_id: basket_ids,
-            ..RequestLinkOrders::default()
         };
 
         self.request_to_buf(req, id)
@@ -1096,15 +1010,14 @@ impl RithmicSenderApi {
 
     pub fn request_easy_to_borrow_list(
         &mut self,
-        request_type: request_easy_to_borrow_list::Request,
+        request_type: EasyToBorrowListRequestType,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestEasyToBorrowList {
             template_id: 348,
             user_msg: vec![id.clone()],
-            request: Some(request_type.into()),
-            ..RequestEasyToBorrowList::default()
+            request: Some(rti::request_easy_to_borrow_list::Request::from(request_type).into()),
         };
 
         self.request_to_buf(req, id)
@@ -1121,12 +1034,11 @@ impl RithmicSenderApi {
         let req = RequestModifyOrderReferenceData {
             template_id: 3500,
             user_msg: vec![id.clone()],
-            user_tag: user_tag,
+            user_tag,
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
             basket_id: Some(basket_id.into()),
-            ..RequestModifyOrderReferenceData::default()
         };
 
         self.request_to_buf(req, id)
@@ -1141,8 +1053,7 @@ impl RithmicSenderApi {
         let req = RequestOrderSessionConfig {
             template_id: 3502,
             user_msg: vec![id.clone()],
-            should_defer_request: should_defer_request,
-            ..RequestOrderSessionConfig::default()
+            should_defer_request,
         };
 
         self.request_to_buf(req, id)
@@ -1155,8 +1066,6 @@ impl RithmicSenderApi {
         window_name: Option<&str>,
         symbol: Option<&str>,
         exchange: Option<&str>,
-        trading_algorithm: Option<&str>,
-        manual_or_auto: request_exit_position::OrderPlacement,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
@@ -1169,8 +1078,6 @@ impl RithmicSenderApi {
             account_id: Some(account.account_id.clone()),
             symbol: symbol.map(|s| s.into()),
             exchange: exchange.map(|s| s.into()),
-            trading_algorithm: trading_algorithm.map(|s| s.into()),
-            manual_or_auto: Some(manual_or_auto.into()),
             ..RequestExitPosition::default()
         };
 
@@ -1193,7 +1100,6 @@ impl RithmicSenderApi {
             account_id: Some(account.account_id.clone()),
             start_index: Some(start_index),
             finish_index: Some(finish_index),
-            ..RequestReplayExecutions::default()
         };
 
         self.request_to_buf(req, id)
@@ -1203,13 +1109,13 @@ impl RithmicSenderApi {
         &mut self,
         account: &AccountInfo,
         subscribe: bool,
-        update_bits: Vec<request_account_rms_updates::UpdateBits>,
+        update_bits: Vec<AccountRmsUpdateBits>,
     ) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let mut bits = 0;
         for bit in update_bits {
-            bits |= bit as i32;
+            bits |= i32::from(bit);
         }
 
         let req = RequestAccountRmsUpdates {
@@ -1218,9 +1124,12 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            request: Some(if subscribe { "subscribe".to_string() } else { "unsubscribe".to_string() }),
+            request: Some(if subscribe {
+                "subscribe".to_string()
+            } else {
+                "unsubscribe".to_string()
+            }),
             update_bits: Some(bits),
-            ..RequestAccountRmsUpdates::default()
         };
 
         self.request_to_buf(req, id)
@@ -1240,10 +1149,10 @@ impl RithmicSenderApi {
             fcm_id: Some(account.fcm_id.clone()),
             ib_id: Some(account.ib_id.clone()),
             account_id: Some(account.account_id.clone()),
-            request: Some(if subscribe { 
-                request_pn_l_position_updates::Request::Subscribe.into() 
-            } else { 
-                request_pn_l_position_updates::Request::Unsubscribe.into() 
+            request: Some(if subscribe {
+                request_pn_l_position_updates::Request::Subscribe.into()
+            } else {
+                request_pn_l_position_updates::Request::Unsubscribe.into()
             }),
             user_msg: vec![id.clone()],
         };
@@ -1273,7 +1182,6 @@ impl RithmicSenderApi {
         let req = RequestListUnacceptedAgreements {
             template_id: 500,
             user_msg: vec![id.clone()],
-            ..RequestListUnacceptedAgreements::default()
         };
 
         self.request_to_buf(req, id)
@@ -1285,23 +1193,18 @@ impl RithmicSenderApi {
         let req = RequestListAcceptedAgreements {
             template_id: 502,
             user_msg: vec![id.clone()],
-            ..RequestListAcceptedAgreements::default()
         };
 
         self.request_to_buf(req, id)
     }
 
-    pub fn request_show_agreement(
-        &mut self,
-        agreement_id: Option<&str>,
-    ) -> (Vec<u8>, String) {
+    pub fn request_show_agreement(&mut self, agreement_id: Option<&str>) -> (Vec<u8>, String) {
         let id = self.get_next_message_id();
 
         let req = RequestShowAgreement {
             template_id: 506,
             user_msg: vec![id.clone()],
             agreement_id: agreement_id.map(|s| s.into()),
-            ..RequestShowAgreement::default()
         };
 
         self.request_to_buf(req, id)

@@ -1,19 +1,20 @@
-use rti_api_rs::{
-    RithmicClient,
-    connection_info::{get_credentials_from_env},
-    RithmicMessage,
-    rti::request_new_order::{PriceType, TransactionType, Duration},
-    api::receiver_api::RithmicResponse,
-    OrderParams, // Import OrderParams
-    ModifyOrderParams,
-};
 use dotenv::dotenv;
+use eyre::{Report, Result, eyre};
+use rti_api_rs::{
+    RithmicClient, RithmicMessage,
+    api::receiver_api::RithmicResponse,
+    connection_info::get_credentials_from_env,
+    types::{
+        ModifyOrderParams, OrderDuration, OrderParams, PriceType, TickBarReplayBarSubType,
+        TickBarReplayBarType, TickBarReplayDirection, TickBarReplayTimeOrder, TransactionType,
+    },
+};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::time::{sleep, Duration as TokioDuration};
-use eyre::{eyre, Report, Result};
-use tracing::{info, warn, error};
+use tokio::time::{Duration as TokioDuration, sleep};
+use tracing::{error, info, warn};
 
-async fn get_connected_client() -> Result<(RithmicClient, tokio::sync::mpsc::Receiver<RithmicResponse>), Report> {
+async fn get_connected_client()
+-> Result<(RithmicClient, tokio::sync::mpsc::Receiver<RithmicResponse>), Report> {
     dotenv().ok();
 
     // Look for RITHMIC_USER_TEST to verify env exists before proceeding
@@ -38,7 +39,7 @@ async fn test_market_data_subscription() -> Result<(), Report> {
         Err(e) if e.to_string() == "SKIPPED_NO_CREDS" => {
             info!("Test skipped: Credentials not found.");
             return Ok(());
-        },
+        }
         Err(e) => return Err(e),
     };
 
@@ -99,7 +100,18 @@ async fn test_historical_replay() -> Result<(), Report> {
     let end = now;
 
     info!("Replaying history...");
-    client.replay_tick_bars("ESZ5", "CME", start, end).await?;
+    client
+        .replay_tick_bars(
+            "ESZ5",
+            "CME",
+            start,
+            end,
+            TickBarReplayBarType::TickBar,     // Default for testing
+            TickBarReplayBarSubType::Regular,  // Default for testing
+            TickBarReplayDirection::Last,      // Default for testing
+            TickBarReplayTimeOrder::Backwards, // Default for testing
+        )
+        .await?;
 
     let mut bars_received = 0;
     let timeout = sleep(TokioDuration::from_secs(15));
@@ -142,26 +154,27 @@ async fn test_order_lifecycle() -> Result<(), Report> {
     // 1. Place Limit Buy Order (Way below market to avoid fill)
     let symbol = "ESZ5";
     let exchange = "CME";
-        let price = 6500.0; // More realistic low price
-        let qty = 1;
-        
-        info!("Submitting Order (Auto-Route)...");
-        
-        let params = OrderParams {
-            symbol: symbol.into(),
-            exchange: exchange.into(),
-            quantity: qty,
-            price,
-            transaction_type: TransactionType::Buy,
-            price_type: PriceType::Limit,
-            duration: Duration::Day,
-            user_tag: None,
-        };
+    let price = 6500.0; // More realistic low price
+    let qty = 1;
 
-        // The client will automatically resolve the trade route for "CME"
-        // provided populate_trade_routes_cache() succeeded during connect().
-        client.submit_order(params).await?;
-    
+    info!("Submitting Order (Auto-Route)...");
+
+    let params = OrderParams {
+        symbol: symbol.into(),
+        exchange: exchange.into(),
+        quantity: qty,
+        price,
+        transaction_type: TransactionType::Buy,
+        price_type: PriceType::Limit,
+        duration: OrderDuration::Day,
+        user_tag: None,
+        auto: true,
+    };
+
+    // The client will automatically resolve the trade route for "CME"
+    // provided populate_trade_routes_cache() succeeded during connect().
+    client.submit_order(params).await?;
+
     let mut basket_id = String::new();
     let mut cancelled = false;
 
@@ -192,7 +205,7 @@ async fn test_order_lifecycle() -> Result<(), Report> {
                                     if (s_lower.contains("open") && !s_lower.contains("pending")) || s_lower.contains("working") {
                                         info!("-> Order OPEN confirmed. Sending Modify...");
                                         state = "modifying";
-                                        
+
                                         let mod_params = ModifyOrderParams {
                                             basket_id: basket_id.clone(),
                                             symbol: symbol.into(),
@@ -200,13 +213,14 @@ async fn test_order_lifecycle() -> Result<(), Report> {
                                             quantity: qty,
                                             price: 1001.0,
                                             price_type: PriceType::Limit,
+                                            auto: true,
                                         };
 
                                         // Send Modify
                                         if let Err(e) = client.modify_order(mod_params).await {
                                             error!("Modify failed: {}", e);
                                             state = "cancelling";
-                                            client.cancel_order(&basket_id).await?;
+                                            client.cancel_order(&basket_id, true).await?;
                                         }
                                     }
                                 }
@@ -219,11 +233,10 @@ async fn test_order_lifecycle() -> Result<(), Report> {
                                     if s_lower.contains("modified") || s_lower == "open" {
                                         info!("-> Order MODIFIED (or back to Open). Sending Cancel...");
                                         state = "cancelling";
-                                        client.cancel_order(&basket_id).await?;
+                                        client.cancel_order(&basket_id, true).await?;
                                     } else if s_lower.contains("modification failed") {
                                         error!("-> Modify Failed. Sending Cancel...");
-                                        state = "cancelling";
-                                        client.cancel_order(&basket_id).await?;
+                                        client.cancel_order(&basket_id, true).await?;
                                     }
                                 }
                             }

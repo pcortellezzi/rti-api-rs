@@ -15,20 +15,46 @@ pub mod api;
 pub mod client;
 pub mod connection_info;
 pub mod rti;
+pub mod types; // Added types module
 pub mod ws;
 
 // Internal modules
 mod plants;
 
 // Public Re-exports
-pub use client::RithmicClient;
-pub use client::{OrderParams, ModifyOrderParams, BracketOrderParams, OcoOrderParams, OcoLegParams};
-pub use connection_info::AccountInfo;
-pub use rti::messages::RithmicMessage;
+pub use crate::client::RithmicClient;
+pub use crate::types::{
+    AccountRmsUpdateBits,
+    BracketOrderParams,
+    BracketType,
+    EasyToBorrowListRequestType,
+    ExitPositionOrderPlacement,
+    InstrumentType,
+    MarketDataField,
+    MarketDataRequestType,
+    ModifyOrderParams,
+    OcoLegParams,
+    OcoOrderParams,
+    OrderDuration,
+    OrderParams,
+    PnlPositionUpdateRequest,
+    PriceType,
+    RithmicMessage, // Re-export RithmicMessage from types
+    SearchPattern,
+    SysInfraType,
+    TickBarReplayBarSubType,
+    TickBarReplayBarType,
+    TickBarReplayDirection,
+    TickBarReplayTimeOrder,
+    TickBarUpdateBarSubType,
+    TickBarUpdateBarType,
+    TickBarUpdateRequest,
+    TimeBarReplayBarType,
+    TimeBarReplayDirection,
+    TimeBarReplayTimeOrder,
+    TimeBarUpdateBarType,
+    TimeBarUpdateRequest,
+    TransactionType,
+};
 
 // Type Aliases for better DX
-pub use rti::request_new_order::TransactionType;
-pub use rti::request_new_order::PriceType;
-pub use rti::request_new_order::Duration as OrderDuration; // Renamed to avoid conflict with std::time::Duration
-pub use rti::request_bracket_order::BracketType;
-pub use rti::request_market_data_update::UpdateBits as MarketDataField; // More descriptive name

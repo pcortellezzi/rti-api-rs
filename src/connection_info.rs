@@ -12,7 +12,12 @@ pub struct RithmicCredentials {
 
 impl RithmicCredentials {
     /// Create new credentials manually.
-    pub fn new(user: impl Into<String>, password: impl Into<String>, system_name: impl Into<String>, gateway_name: impl Into<String>) -> Self {
+    pub fn new(
+        user: impl Into<String>,
+        password: impl Into<String>,
+        system_name: impl Into<String>,
+        gateway_name: impl Into<String>,
+    ) -> Self {
         Self {
             user: user.into(),
             password: password.into(),
@@ -34,7 +39,9 @@ impl RithmicCredentials {
 /// Takes an optional `env_suffix`.
 /// - If `None`, looks for `RITHMIC_USER`, `RITHMIC_PASSWORD`, etc.
 /// - If `Some("TEST")`, looks for `RITHMIC_USER_TEST`, `RITHMIC_PASSWORD_TEST`, etc.
-pub fn get_credentials_from_env(env_suffix: Option<&str>) -> Result<RithmicCredentials, env::VarError> {
+pub fn get_credentials_from_env(
+    env_suffix: Option<&str>,
+) -> Result<RithmicCredentials, env::VarError> {
     dotenv().ok();
 
     let get_key = |base: &str| -> String {

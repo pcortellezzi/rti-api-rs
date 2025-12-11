@@ -1,13 +1,13 @@
-use std::collections::HashMap;
+use eyre::{Report, Result, eyre};
 use prost::Message; // Trait required for encode
+use std::collections::HashMap;
 use tokio::sync::{mpsc, oneshot};
-use tokio::time::{interval, Duration};
+use tokio::time::{Duration, interval};
 use tracing::{debug, error, info};
-use eyre::{eyre, Report, Result};
 
-use crate::api::receiver_api::{decode_message, RithmicResponse};
+use crate::api::receiver_api::{RithmicResponse, decode_message};
+use crate::rti::{RequestHeartbeat, ResponseLogin, messages::RithmicMessage};
 use crate::ws::{connect, receive_bytes, send_bytes};
-use crate::rti::{RequestHeartbeat, messages::RithmicMessage, ResponseLogin};
 
 /// Command sent to the worker
 pub struct WorkerCommand {
@@ -16,7 +16,7 @@ pub struct WorkerCommand {
     // For single, immediate response (e.g., login, submit order ACK)
     pub reply_tx: Option<oneshot::Sender<Result<RithmicResponse, String>>>,
     // For streaming/multi-part responses (e.g., historical data, account lists)
-    pub stream_tx: Option<mpsc::Sender<Result<RithmicResponse, String>>>, 
+    pub stream_tx: Option<mpsc::Sender<Result<RithmicResponse, String>>>,
 }
 
 /// Main loop for a plant connection
@@ -27,10 +27,9 @@ pub async fn start_plant_worker(
     event_tx: mpsc::Sender<RithmicResponse>,
     login_result_tx: oneshot::Sender<Result<ResponseLogin, String>>,
 ) -> Result<(), Report> {
-    
     info!("Starting worker for {}", url);
     let mut login_result_tx = Some(login_result_tx);
-    
+
     // 1. Connect
     let mut stream = match connect(&url).await {
         Ok(s) => s,
@@ -43,14 +42,16 @@ pub async fn start_plant_worker(
             return Err(e);
         }
     };
-    
+
     // 2. Login
     let (login_payload, login_id) = login_req;
     // DEBUG: Hex dump login payload
-    let hex_string: String = login_payload.iter()
-        .map(|b| format!("{:02X}", b))
-        .collect();
-    debug!("Login Payload ({} bytes): {}", login_payload.len(), hex_string);
+    let hex_string: String = login_payload.iter().map(|b| format!("{:02X}", b)).collect();
+    debug!(
+        "Login Payload ({} bytes): {}",
+        login_payload.len(),
+        hex_string
+    );
 
     if let Err(e) = send_bytes(&mut stream, login_payload).await {
         let msg = format!("Failed to send login request: {}", e);
@@ -60,7 +61,7 @@ pub async fn start_plant_worker(
         }
         return Err(e);
     }
-    
+
     // Wait for login response
     let mut logged_in = false;
     let mut heartbeat_secs: f64 = 30.0; // Default fallback
@@ -68,42 +69,46 @@ pub async fn start_plant_worker(
     while !logged_in {
         match receive_bytes(&mut stream).await {
             Ok(Some(bytes)) => {
-                 match decode_message(&bytes) {
-                     Ok(resp) => {
-                         if resp.request_id == login_id {
-                             if let RithmicMessage::ResponseLogin(login_resp) = resp.message {
-                                 // Extract heartbeat info
-                                 if let Some(hb) = login_resp.heartbeat_interval {
-                                     heartbeat_secs = hb;
-                                     debug!("Heartbeat interval set to {}s", heartbeat_secs);
-                                 }
-                                 
-                                 info!("Login successful for {}", url);
-                                 // Notify success with full login response
-                                 if let Some(tx) = login_result_tx.take() {
-                                     let _ = tx.send(Ok(login_resp));
-                                 }
-                                 logged_in = true;
-                             } else {
-                                 if let Some(tx) = login_result_tx.take() {
-                                     let _ = tx.send(Err("Unexpected response type during login".into()));
-                                 }
-                                 return Err(eyre!("Unexpected response type during login"));
-                             }
-                         } else {
-                             // Ignore other messages during login or handle them?
-                             debug!("Received message during login: {:?}", resp.message);
-                         }
-                     }
-                     Err(e) => {
-                         let err_msg = e.error.clone().unwrap_or_else(|| "Unknown login error".to_string());
-                         error!("Login failed/rejected: {}", err_msg);
-                         if let Some(tx) = login_result_tx.take() {
-                             let _ = tx.send(Err(err_msg.clone()));
-                         }
-                         return Err(eyre!("Login failed: {}", err_msg));
-                     }
-                 }
+                match decode_message(&bytes) {
+                    Ok(resp) => {
+                        if resp.request_id == login_id {
+                            if let RithmicMessage::ResponseLogin(login_resp) = resp.message {
+                                // Extract heartbeat info
+                                if let Some(hb) = login_resp.heartbeat_interval {
+                                    heartbeat_secs = hb;
+                                    debug!("Heartbeat interval set to {}s", heartbeat_secs);
+                                }
+
+                                info!("Login successful for {}", url);
+                                // Notify success with full login response
+                                if let Some(tx) = login_result_tx.take() {
+                                    let _ = tx.send(Ok(login_resp));
+                                }
+                                logged_in = true;
+                            } else {
+                                if let Some(tx) = login_result_tx.take() {
+                                    let _ = tx
+                                        .send(Err("Unexpected response type during login".into()));
+                                }
+                                return Err(eyre!("Unexpected response type during login"));
+                            }
+                        } else {
+                            // Ignore other messages during login or handle them?
+                            debug!("Received message during login: {:?}", resp.message);
+                        }
+                    }
+                    Err(e) => {
+                        let err_msg = e
+                            .error
+                            .clone()
+                            .unwrap_or_else(|| "Unknown login error".to_string());
+                        error!("Login failed/rejected: {}", err_msg);
+                        if let Some(tx) = login_result_tx.take() {
+                            let _ = tx.send(Err(err_msg.clone()));
+                        }
+                        return Err(eyre!("Login failed: {}", err_msg));
+                    }
+                }
             }
             Ok(None) => {
                 let msg = "Connection closed by server during login";
@@ -123,16 +128,22 @@ pub async fn start_plant_worker(
             }
         }
     }
-    
+
     // 3. Main Loop
     // Map to hold pending single-response commands
-    let mut pending_replies: HashMap<String, oneshot::Sender<Result<RithmicResponse, String>>> = HashMap::new();
+    let mut pending_replies: HashMap<String, oneshot::Sender<Result<RithmicResponse, String>>> =
+        HashMap::new();
     // Map to hold pending multi-response (stream) commands
-    let mut pending_streams: HashMap<String, mpsc::Sender<Result<RithmicResponse, String>>> = HashMap::new();
+    let mut pending_streams: HashMap<String, mpsc::Sender<Result<RithmicResponse, String>>> =
+        HashMap::new();
 
-    let hb_period = if heartbeat_secs > 5.0 { heartbeat_secs - 2.0 } else { heartbeat_secs };
+    let hb_period = if heartbeat_secs > 5.0 {
+        heartbeat_secs - 2.0
+    } else {
+        heartbeat_secs
+    };
     let mut heartbeat_interval = interval(Duration::from_secs(hb_period as u64));
-    
+
     loop {
         tokio::select! {
             // Heartbeat
@@ -142,14 +153,14 @@ pub async fn start_plant_worker(
                     user_msg: vec!["hb".to_string()],
                     ..RequestHeartbeat::default()
                 };
-                
+
                 let mut buf = Vec::new();
                 let len = req.encoded_len() as u32;
                 let header = len.to_be_bytes();
                 buf.reserve((len + 4) as usize);
                 buf.extend_from_slice(&header);
                 req.encode(&mut buf).unwrap();
-                
+
                 if let Err(e) = send_bytes(&mut stream, buf).await {
                      error!("Failed to send heartbeat: {}", e);
                      break;
@@ -176,7 +187,7 @@ pub async fn start_plant_worker(
                             if let Some(tx) = pending_streams.remove(&cmd.request_id) {
                                 let _ = tx.send(Err(e.to_string())).await;
                             }
-                            break; 
+                            break;
                         }
                     }
                     None => {
@@ -254,7 +265,7 @@ pub async fn start_plant_worker(
             }
         }
     }
-    
+
     info!("Worker {} stopped", url);
     Ok(())
 }

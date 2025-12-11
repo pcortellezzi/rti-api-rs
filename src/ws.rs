@@ -1,30 +1,30 @@
-use std::env;
-use futures_util::{SinkExt, StreamExt};
-use tokio::io::{AsyncWriteExt, AsyncBufReadExt, BufReader};
-use tokio::net::TcpStream;
-use tokio_tungstenite::{
-    client_async,
-    tungstenite::{Message},
-    WebSocketStream,
-};
-use tokio_native_tls::{TlsConnector, TlsStream};
-use native_tls::TlsConnector as NativeTlsConnector;
-use tracing::{debug, info, error};
-use url::Url;
 use bytes::Bytes;
-use eyre::{eyre, Report, Result};
+use eyre::{Report, Result, eyre};
+use futures_util::{SinkExt, StreamExt};
+use native_tls::TlsConnector as NativeTlsConnector;
+use std::env;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::TcpStream;
+use tokio_native_tls::{TlsConnector, TlsStream};
+use tokio_tungstenite::{WebSocketStream, client_async, tungstenite::Message};
+use tracing::{debug, error, info};
+use url::Url;
 
 pub type RithmicStream = WebSocketStream<TlsStream<TcpStream>>;
 
 /// Connect to a Rithmic WebSocket endpoint with SSL/TLS, supporting system proxies.
 pub async fn connect(url: &str) -> Result<RithmicStream, Report> {
     let target_url = Url::parse(url)?;
-    let host = target_url.host_str().ok_or_else(|| eyre!("No host in URL"))?;
-    let port = target_url.port_or_known_default().ok_or_else(|| eyre!("No port in URL"))?;
-    
+    let host = target_url
+        .host_str()
+        .ok_or_else(|| eyre!("No host in URL"))?;
+    let port = target_url
+        .port_or_known_default()
+        .ok_or_else(|| eyre!("No port in URL"))?;
+
     // 1. Detect Proxy
     let proxy_url = get_proxy_url();
-    
+
     let tcp_stream = if let Some(proxy) = proxy_url {
         info!("Using Proxy: {}", proxy);
         connect_via_proxy(&proxy, host, port).await?
@@ -58,7 +58,10 @@ pub async fn connect(url: &str) -> Result<RithmicStream, Report> {
 
 /// Helper to send bytes
 pub async fn send_bytes(stream: &mut RithmicStream, data: Vec<u8>) -> Result<(), Report> {
-    stream.send(Message::Binary(Bytes::from(data))).await.map_err(|e| e.into())
+    stream
+        .send(Message::Binary(Bytes::from(data)))
+        .await
+        .map_err(|e| e.into())
 }
 
 /// Helper to receive bytes
@@ -79,7 +82,7 @@ pub async fn receive_bytes(stream: &mut RithmicStream) -> Result<Option<Vec<u8>>
         }
         Some(Err(e)) => Err(e.into()),
         None => Ok(None), // Stream ended
-        _ => Ok(None), // Text messages or others we ignore
+        _ => Ok(None),    // Text messages or others we ignore
     }
 }
 
@@ -88,22 +91,30 @@ pub async fn receive_bytes(stream: &mut RithmicStream) -> Result<Option<Vec<u8>>
 fn get_proxy_url() -> Option<Url> {
     // Check common env vars
     let vars = ["HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"];
-    
+
     for var in vars {
-        if let Ok(val) = env::var(var) && !val.is_empty() {
+        if let Ok(val) = env::var(var)
+            && !val.is_empty()
+        {
             return Url::parse(&val).ok();
         }
     }
     None
 }
 
-async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16) -> Result<TcpStream, Report> {
-    let proxy_host = proxy_url.host_str().ok_or_else(|| eyre!("Invalid proxy host"))?;
+async fn connect_via_proxy(
+    proxy_url: &Url,
+    target_host: &str,
+    target_port: u16,
+) -> Result<TcpStream, Report> {
+    let proxy_host = proxy_url
+        .host_str()
+        .ok_or_else(|| eyre!("Invalid proxy host"))?;
     let proxy_port = proxy_url.port_or_known_default().unwrap_or(8080);
 
     debug!("Connecting to proxy at {}:{}", proxy_host, proxy_port);
     let stream = TcpStream::connect((proxy_host, proxy_port)).await?;
-    
+
     // Use BufReader to read line by line
     let mut reader = BufReader::new(stream);
 
@@ -115,11 +126,18 @@ async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16)
 
     // Proxy Auth
     if !proxy_url.username().is_empty() {
-        let auth = format!("{}:{}", proxy_url.username(), proxy_url.password().unwrap_or(""));
+        let auth = format!(
+            "{}:{}",
+            proxy_url.username(),
+            proxy_url.password().unwrap_or("")
+        );
         use base64::{Engine as _, engine::general_purpose};
         let encoded = general_purpose::STANDARD.encode(auth);
-        connect_req.push_str(&format!("Proxy-Authorization: Basic {}\
-\n", encoded));
+        connect_req.push_str(&format!(
+            "Proxy-Authorization: Basic {}\
+\n",
+            encoded
+        ));
     }
 
     connect_req.push_str("\r\n");
@@ -130,13 +148,13 @@ async fn connect_via_proxy(proxy_url: &Url, target_host: &str, target_port: u16)
 
     // Read Response Headers
     let mut line = String::new();
-    
+
     // Read Status Line
     reader.read_line(&mut line).await?;
     if !line.starts_with("HTTP/1.1 200") && !line.starts_with("HTTP/1.0 200") {
         return Err(eyre!("Proxy handshake failed: {}", line.trim()));
     }
-    
+
     // Read until empty line
     loop {
         line.clear();
